@@ -1,0 +1,2 @@
+# This directory will contain downloaded pyannote models
+# (cached by HuggingFace, but we keep this dir for reference)

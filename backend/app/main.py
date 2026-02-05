@@ -1,0 +1,63 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .database import init_db
+from .routers import transcriptions, conversations
+from .config import settings
+
+# Create FastAPI app
+app = FastAPI(
+    title="Local Audio Transcriber",
+    description="A local web application for transcribing audio files using Whisper. Supports English and Hebrew.",
+    version="1.0.0"
+)
+
+# Configure CORS for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(transcriptions.router)
+app.include_router(conversations.router)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup."""
+    init_db()
+    print("Database initialized")
+    print(f"Using Whisper model: {settings.whisper_model}")
+    print(f"Audio storage: {settings.audio_storage_path}")
+    print(f"Transcript storage: {settings.transcript_storage_path}")
+
+
+@app.get("/")
+async def root():
+    """Root endpoint with API info."""
+    return {
+        "name": "Local Audio Transcriber API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "supported_languages": ["English", "Hebrew"],
+        "endpoints": {
+            "upload": "POST /api/upload",
+            "list": "GET /api/transcriptions",
+            "get": "GET /api/transcriptions/{id}",
+            "audio": "GET /api/transcriptions/{id}/audio",
+            "transcript": "GET /api/transcriptions/{id}/transcript",
+            "status": "GET /api/status/{id}",
+            "delete": "DELETE /api/transcriptions/{id}",
+            "languages": "GET /api/languages"
+        }
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}
