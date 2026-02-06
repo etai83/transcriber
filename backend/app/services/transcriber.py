@@ -9,6 +9,9 @@ from pathlib import Path
 from ..config import settings
 
 
+from .diarizer import diarizer_service
+import traceback
+
 class TranscriberService:
     """Service for transcribing audio files using Whisper."""
     
@@ -528,8 +531,7 @@ class TranscriberService:
             - duration: Audio duration in seconds
             - transcript_segments: Diarized transcript data with speaker labels
         """
-        from .diarizer import diarizer_service
-        
+
         model = cls.get_model()
         temp_files = []  # Track all temporary files for cleanup
         transcribe_path = audio_path
@@ -659,7 +661,7 @@ class TranscriberService:
             return result
         except Exception as e:
             print(f"Transcription with diarization failed: {e}")
-            import traceback
+
             traceback.print_exc()
             # Fall back to regular transcription
             result = cls.transcribe(audio_path, language, trim_silence)
