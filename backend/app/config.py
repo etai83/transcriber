@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
     
     def get_audio_path(self) -> Path:
         path = Path(self.audio_storage_path)
