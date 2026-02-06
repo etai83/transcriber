@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>App Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f6df0",
+                        "secondary": "#8b5cf6",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101822",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e293b",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>.toggle-checkbox:checked {
+            right: 0;
+            border-color: #0f6df0;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0f6df0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display antialiased selection:bg-primary/30 h-screen w-full flex flex-col overflow-hidden">
+<header class="shrink-0 bg-surface-light/80 dark:bg-[#111822]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between z-20 sticky top-0">
+<button class="size-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-600 dark:text-slate-300">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold">Settings</h1>
+<div class="size-10"></div> 
+</header>
+<main class="flex-1 overflow-y-auto p-4 space-y-8 pb-10 scroll-smooth">
+<section>
+<h2 class="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Transcription Engine</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-sm">
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+</div>
+<div>
+<p class="font-medium text-sm text-slate-900 dark:text-white">Whisper Model</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">Large v3 (Multilingual)</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</div>
+</button>
+</div>
+<p class="px-4 mt-2 text-xs text-slate-500 dark:text-slate-500 leading-relaxed">
+                Larger models provide better accuracy but require more processing power and battery.
+            </p>
+</section>
+<section>
+<h2 class="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Audio Settings</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-700/50">
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">graphic_eq</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Noise Reduction</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">content_cut</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Silence Removal</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">groups</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Identify Speakers</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<section>
+<h2 class="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Language</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-700/50">
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">translate</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Transcription Language</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm text-slate-500 dark:text-slate-400">English / Hebrew</span>
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</div>
+</button>
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">language</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">App Interface</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm text-slate-500 dark:text-slate-400">English</span>
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+<section>
+<h2 class="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Storage</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-700/50">
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">folder_open</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Manage Local Files</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-sm text-slate-500 dark:text-slate-400">1.2 GB</span>
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</div>
+</button>
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-4">
+<div class="size-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">auto_delete</span>
+</div>
+<span class="font-medium text-sm text-slate-900 dark:text-white">Auto-delete after 30 days</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<section>
+<h2 class="px-3 mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">About</h2>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-hidden shadow-sm divide-y divide-slate-100 dark:divide-slate-700/50">
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<span class="font-medium text-sm text-slate-900 dark:text-white pl-1">Terms of Service</span>
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group text-left">
+<span class="font-medium text-sm text-slate-900 dark:text-white pl-1">Privacy Policy</span>
+<span class="material-symbols-outlined text-slate-400 text-xl group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">chevron_right</span>
+</button>
+<div class="flex items-center justify-between p-4">
+<span class="font-medium text-sm text-slate-900 dark:text-white pl-1">Version</span>
+<span class="text-sm text-slate-500 dark:text-slate-400">2.4.1 (Build 220)</span>
+</div>
+</div>
+</section>
+<div class="pt-4 pb-8">
+<button class="w-full py-3 rounded-xl bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 font-medium text-sm border border-red-100 dark:border-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
+                Reset All Settings
+            </button>
+</div>
+</main>
+<div class="fixed top-0 left-0 w-full h-40 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none z-0"></div>
+
+</body></html>

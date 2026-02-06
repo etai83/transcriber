@@ -2,16 +2,16 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { conversationApi, transcriptionApi } from '../services/api'
 
-function ConversationRecorder({ onRecordingComplete }) {
+function ConversationRecorder({ onRecordingComplete, compact = false }) {
   const navigate = useNavigate()
-  
+
   // Recording state
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [chunkTime, setChunkTime] = useState(0)
   const [audioLevel, setAudioLevel] = useState(0) // 0-100 for audio meter
-  
+
   // Settings
   const [language, setLanguage] = useState('auto')
   const [trimSilence, setTrimSilence] = useState(false)
@@ -19,17 +19,17 @@ function ConversationRecorder({ onRecordingComplete }) {
   const [numSpeakers, setNumSpeakers] = useState(2) // number of speakers for diarization
   const [availableMics, setAvailableMics] = useState([])
   const [selectedMicId, setSelectedMicId] = useState('')
-  
+
   // Conversation state
   const [conversationId, setConversationId] = useState(null)
   const [chunks, setChunks] = useState([])
   const [chunkIndex, setChunkIndex] = useState(0)
-  
+
   // UI state
   const [error, setError] = useState(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [retryingChunks, setRetryingChunks] = useState({})
-  
+
   // Refs
   const mediaRecorderRef = useRef(null)
   const audioChunksRef = useRef([])
@@ -42,7 +42,7 @@ function ConversationRecorder({ onRecordingComplete }) {
   const isPausedRef = useRef(false)
   const mimeTypeRef = useRef('audio/webm')
   const isStoppingForChunkRef = useRef(false)
-  
+
   // Audio analysis refs
   const audioContextRef = useRef(null)
   const analyserRef = useRef(null)
@@ -55,12 +55,12 @@ function ConversationRecorder({ onRecordingComplete }) {
         // Need to request permission first to get device labels
         await navigator.mediaDevices.getUserMedia({ audio: true })
           .then(stream => stream.getTracks().forEach(track => track.stop()))
-        
+
         const devices = await navigator.mediaDevices.enumerateDevices()
         const mics = devices.filter(device => device.kind === 'audioinput')
         console.log('Available microphones:', mics)
         setAvailableMics(mics)
-        
+
         // Select first mic by default if none selected
         if (mics.length > 0 && !selectedMicId) {
           setSelectedMicId(mics[0].deviceId)
@@ -69,7 +69,7 @@ function ConversationRecorder({ onRecordingComplete }) {
         console.error('Error loading microphones:', err)
       }
     }
-    
+
     loadMicrophones()
   }, [])
 
@@ -110,33 +110,33 @@ function ConversationRecorder({ onRecordingComplete }) {
       analyserRef.current = audioContextRef.current.createAnalyser()
       const source = audioContextRef.current.createMediaStreamSource(stream)
       source.connect(analyserRef.current)
-      
+
       analyserRef.current.fftSize = 256
       const bufferLength = analyserRef.current.frequencyBinCount
       const dataArray = new Uint8Array(bufferLength)
-      
+
       const updateLevel = () => {
         if (!isRecordingRef.current) {
           setAudioLevel(0)
           return
         }
-        
+
         analyserRef.current.getByteFrequencyData(dataArray)
-        
+
         // Calculate average volume
         let sum = 0
         for (let i = 0; i < bufferLength; i++) {
           sum += dataArray[i]
         }
         const average = sum / bufferLength
-        
+
         // Convert to 0-100 scale (dataArray values are 0-255)
         const level = Math.min(100, Math.round((average / 255) * 100 * 2)) // *2 to make it more sensitive
         setAudioLevel(level)
-        
+
         animationFrameRef.current = requestAnimationFrame(updateLevel)
       }
-      
+
       updateLevel()
     } catch (err) {
       console.error('Error setting up audio monitoring:', err)
@@ -158,7 +158,7 @@ function ConversationRecorder({ onRecordingComplete }) {
   // Poll for chunk status updates
   useEffect(() => {
     if (!conversationId || chunks.length === 0) return
-    
+
     const hasProcessing = chunks.some(c => c.status === 'pending' || c.status === 'processing')
     if (!hasProcessing) return
 
@@ -177,8 +177,8 @@ function ConversationRecorder({ onRecordingComplete }) {
   const uploadChunk = useCallback(async (blob, index) => {
     if (!conversationIdRef.current) return
 
-    const extension = blob.type.includes('webm') ? 'webm' : 
-                      blob.type.includes('mp4') ? 'm4a' : 'webm'
+    const extension = blob.type.includes('webm') ? 'webm' :
+      blob.type.includes('mp4') ? 'm4a' : 'webm'
     const filename = `chunk_${index}_${Date.now()}.${extension}`
     const file = new File([blob], filename, { type: blob.type })
 
@@ -186,7 +186,7 @@ function ConversationRecorder({ onRecordingComplete }) {
 
     try {
       const result = await conversationApi.addChunk(conversationIdRef.current, file, index)
-      
+
       // Add to chunks list
       setChunks(prev => {
         // Check if chunk already exists (avoid duplicates)
@@ -212,7 +212,7 @@ function ConversationRecorder({ onRecordingComplete }) {
     try {
       await transcriptionApi.retry(chunkId)
       // Update the chunk status locally
-      setChunks(prev => prev.map(c => 
+      setChunks(prev => prev.map(c =>
         c.id === chunkId ? { ...c, status: 'pending', error_message: null } : c
       ))
     } catch (err) {
@@ -227,7 +227,7 @@ function ConversationRecorder({ onRecordingComplete }) {
   const createMediaRecorder = useCallback(() => {
     if (!streamRef.current) return null
 
-    const mediaRecorder = new MediaRecorder(streamRef.current, { 
+    const mediaRecorder = new MediaRecorder(streamRef.current, {
       mimeType: mimeTypeRef.current,
       audioBitsPerSecond: 128000
     })
@@ -246,29 +246,29 @@ function ConversationRecorder({ onRecordingComplete }) {
 
     mediaRecorder.onstop = () => {
       console.log('MediaRecorder stopped, isStoppingForChunk:', isStoppingForChunkRef.current)
-      
+
       // Create blob from accumulated data
       if (audioChunksRef.current.length > 0) {
         const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current })
         const currentIndex = chunkIndexRef.current
-        
+
         console.log(`Chunk ${currentIndex} complete, blob size: ${blob.size} bytes`)
-        
+
         // Only upload if there's meaningful data (more than 1KB)
         if (blob.size > 1000) {
           uploadChunk(blob, currentIndex)
-          
+
           // Increment chunk index for next chunk
           setChunkIndex(prev => prev + 1)
           chunkIndexRef.current = chunkIndexRef.current + 1
         } else {
           console.log('Chunk too small, skipping upload')
         }
-        
+
         // Clear for next chunk
         audioChunksRef.current = []
       }
-      
+
       // If we stopped to create a chunk (not final stop), start a new recorder
       if (isStoppingForChunkRef.current && isRecordingRef.current) {
         isStoppingForChunkRef.current = false
@@ -289,7 +289,7 @@ function ConversationRecorder({ onRecordingComplete }) {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
       return
     }
-    
+
     if (isPausedRef.current) {
       console.log('Skipping chunk rotation while paused')
       return
@@ -297,7 +297,7 @@ function ConversationRecorder({ onRecordingComplete }) {
 
     console.log('Rotating MediaRecorder for new chunk...')
     isStoppingForChunkRef.current = true
-    
+
     // Stop will trigger onstop, which will upload the chunk and create a new recorder
     mediaRecorderRef.current.stop()
   }, [])
@@ -340,15 +340,15 @@ function ConversationRecorder({ onRecordingComplete }) {
         sampleRate: 48000,
         channelCount: 1
       }
-      
+
       // Use selected microphone if specified
       if (selectedMicId) {
         audioConstraints.deviceId = { exact: selectedMicId }
       }
-      
+
       console.log('Requesting microphone with constraints:', audioConstraints)
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: audioConstraints
       })
       streamRef.current = stream
@@ -431,17 +431,17 @@ function ConversationRecorder({ onRecordingComplete }) {
   const stopRecording = async () => {
     isRecordingRef.current = false
     isStoppingForChunkRef.current = false  // This is a final stop, not a chunk rotation
-    
+
     // Stop audio monitoring
     stopAudioMonitoring()
-    
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
-    
+
     setIsRecording(false)
     setIsPaused(false)
-    
+
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -542,6 +542,140 @@ function ConversationRecorder({ onRecordingComplete }) {
     }
   }
 
+  // Compact dark-themed version for use in Dashboard Record tab
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center py-8">
+        {/* Error Messages */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-400 text-sm w-full">
+            {error}
+          </div>
+        )}
+
+        {permissionDenied && (
+          <div className="mb-4 p-4 bg-amber-900/20 border border-amber-500/20 rounded-xl w-full">
+            <p className="text-amber-400 text-sm font-medium">To enable microphone access:</p>
+            <ul className="text-amber-400/80 text-sm mt-2 list-disc list-inside">
+              <li>Click the lock icon in your browser's address bar</li>
+              <li>Allow microphone permissions</li>
+              <li>Refresh the page</li>
+            </ul>
+          </div>
+        )}
+
+        {/* Recording Visualizer */}
+        <div className={`size-20 rounded-full flex items-center justify-center transition-all duration-300 mb-4 ${isRecording
+            ? isPaused
+              ? 'bg-amber-500/20'
+              : 'bg-red-500/20 animate-pulse'
+            : 'bg-slate-800'
+          }`}>
+          {isRecording ? (
+            <div className="flex items-center space-x-1">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 bg-red-500 rounded-full transition-all duration-75`}
+                  style={{
+                    height: isPaused ? '12px' : `${Math.max(6, (audioLevel / 100) * 24 + Math.random() * 6)}px`,
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="material-symbols-outlined text-3xl text-slate-400">mic</span>
+          )}
+        </div>
+
+        {/* Timer */}
+        <div className={`text-3xl font-mono mb-4 ${isRecording ? 'text-red-500' : 'text-slate-500'}`}>
+          {formatTime(recordingTime)}
+        </div>
+
+        {/* Chunk Progress */}
+        {isRecording && (
+          <div className="text-xs text-slate-500 mb-4">
+            Chunk {chunkIndex + 1}: {formatTime(chunkTime)} / {formatTime(chunkInterval)}
+            <div className="w-32 mx-auto mt-1 bg-slate-700 rounded-full h-1">
+              <div
+                className="bg-primary h-1 rounded-full transition-all duration-1000"
+                style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Control Buttons */}
+        <div className="flex items-center justify-center gap-4">
+          {!isRecording ? (
+            conversationId ? (
+              <>
+                <button
+                  onClick={viewConversation}
+                  className="px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition-colors"
+                >
+                  View Transcript
+                </button>
+                <button
+                  onClick={startNewRecording}
+                  className="px-5 py-2.5 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                >
+                  New Recording
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={startRecording}
+                className="size-14 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-red-500/30"
+                title="Start Recording"
+              >
+                <span className="material-symbols-outlined text-2xl">mic</span>
+              </button>
+            )
+          ) : (
+            <>
+              <button
+                onClick={pauseRecording}
+                className={`size-10 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white'
+                  }`}
+                title={isPaused ? 'Resume' : 'Pause'}
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {isPaused ? 'play_arrow' : 'pause'}
+                </span>
+              </button>
+
+              <button
+                onClick={stopRecording}
+                className="size-14 bg-slate-700 hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                title="Stop Recording"
+              >
+                <span className="material-symbols-outlined text-2xl">stop</span>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Status Text */}
+        {isRecording && (
+          <p className="mt-4 text-xs text-slate-500">
+            {isPaused ? 'Recording paused' : `Recording... Transcribing every ${chunkInterval}s`}
+          </p>
+        )}
+
+        {/* Privacy Indicator */}
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <span className="material-symbols-outlined text-slate-400 text-sm">shield_lock</span>
+          <p className="text-slate-400 text-xs font-medium">Secure Local Processing (Device Only)</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Full version for standalone use
   return (
     <div className="flex gap-4">
       {/* Main Recording Panel */}
@@ -568,13 +702,12 @@ function ConversationRecorder({ onRecordingComplete }) {
         <div className="text-center py-8">
           {/* Recording Visualizer */}
           <div className="mb-6">
-            <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all duration-300 ${
-              isRecording 
-                ? isPaused 
-                  ? 'bg-yellow-100' 
-                  : 'bg-red-100 animate-pulse' 
+            <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
+                ? isPaused
+                  ? 'bg-yellow-100'
+                  : 'bg-red-100 animate-pulse'
                 : 'bg-gray-100'
-            }`}>
+              }`}>
               {isRecording ? (
                 <div className="flex items-center space-x-1">
                   {[...Array(5)].map((_, i) => (
@@ -593,7 +726,7 @@ function ConversationRecorder({ onRecordingComplete }) {
                 </svg>
               )}
             </div>
-            
+
             {/* Audio Level Meter */}
             {isRecording && (
               <div className="mt-4 max-w-xs mx-auto">
@@ -604,10 +737,9 @@ function ConversationRecorder({ onRecordingComplete }) {
                   </span>
                 </div>
                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-75 ${
-                      audioLevel < 10 ? 'bg-red-500' : audioLevel < 30 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
+                  <div
+                    className={`h-full transition-all duration-75 ${audioLevel < 10 ? 'bg-red-500' : audioLevel < 30 ? 'bg-yellow-500' : 'bg-green-500'
+                      }`}
                     style={{ width: `${audioLevel}%` }}
                   />
                 </div>
@@ -629,7 +761,7 @@ function ConversationRecorder({ onRecordingComplete }) {
               <div className="text-sm text-gray-500 mt-2">
                 Chunk {chunkIndex + 1}: {formatTime(chunkTime)} / {formatTime(chunkInterval)}
                 <div className="w-48 mx-auto mt-1 bg-gray-200 rounded-full h-1.5">
-                  <div 
+                  <div
                     className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000"
                     style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
                   />
@@ -673,11 +805,10 @@ function ConversationRecorder({ onRecordingComplete }) {
               <>
                 <button
                   onClick={pauseRecording}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow ${
-                    isPaused 
-                      ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
+                      ? 'bg-green-500 hover:bg-green-600 text-white'
                       : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                  }`}
+                    }`}
                   title={isPaused ? 'Resume' : 'Pause'}
                 >
                   {isPaused ? (
@@ -831,50 +962,50 @@ function ConversationRecorder({ onRecordingComplete }) {
               {chunks
                 .sort((a, b) => (b.chunk_index ?? 0) - (a.chunk_index ?? 0))
                 .map((chunk, index) => (
-                <div 
-                  key={chunk.id || index}
-                  className="bg-white rounded-lg p-3 shadow-sm border"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-gray-500">
-                      Part {(chunk.chunk_index ?? index) + 1}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      {getStatusIcon(chunk.status)}
-                      <span className="text-xs text-gray-400">
-                        {chunk.status}
+                  <div
+                    key={chunk.id || index}
+                    className="bg-white rounded-lg p-3 shadow-sm border"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-500">
+                        Part {(chunk.chunk_index ?? index) + 1}
                       </span>
+                      <div className="flex items-center space-x-1">
+                        {getStatusIcon(chunk.status)}
+                        <span className="text-xs text-gray-400">
+                          {chunk.status}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  {chunk.status === 'completed' && chunk.transcript_text ? (
-                    <p className="text-sm text-gray-700 line-clamp-4">
-                      {chunk.transcript_text}
-                    </p>
-                  ) : chunk.status === 'processing' ? (
-                    <p className="text-sm text-gray-400 italic">
-                      Transcribing...
-                    </p>
-                  ) : chunk.status === 'failed' ? (
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-red-500 flex-1">
-                        {chunk.error_message || 'Transcription failed'}
+
+                    {chunk.status === 'completed' && chunk.transcript_text ? (
+                      <p className="text-sm text-gray-700 line-clamp-4">
+                        {chunk.transcript_text}
                       </p>
-                      <button
-                        onClick={() => handleRetryChunk(chunk.id)}
-                        disabled={retryingChunks[chunk.id]}
-                        className="ml-2 px-2 py-1 text-xs text-orange-600 hover:text-orange-800 border border-orange-400 rounded hover:bg-orange-50 disabled:opacity-50"
-                      >
-                        {retryingChunks[chunk.id] ? 'Retrying...' : 'Retry'}
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400 italic">
-                      Waiting to process...
-                    </p>
-                  )}
-                </div>
-              ))}
+                    ) : chunk.status === 'processing' ? (
+                      <p className="text-sm text-gray-400 italic">
+                        Transcribing...
+                      </p>
+                    ) : chunk.status === 'failed' ? (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-red-500 flex-1">
+                          {chunk.error_message || 'Transcription failed'}
+                        </p>
+                        <button
+                          onClick={() => handleRetryChunk(chunk.id)}
+                          disabled={retryingChunks[chunk.id]}
+                          className="ml-2 px-2 py-1 text-xs text-orange-600 hover:text-orange-800 border border-orange-400 rounded hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          {retryingChunks[chunk.id] ? 'Retrying...' : 'Retry'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic">
+                        Waiting to process...
+                      </p>
+                    )}
+                  </div>
+                ))}
             </div>
           )}
 

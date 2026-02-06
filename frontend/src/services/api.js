@@ -181,6 +181,24 @@ export const conversationApi = {
     const response = await api.post(`/conversations/${id}/refresh-status`)
     return response.data
   },
+
+  /**
+   * Upload an audio file and create a conversation
+   */
+  upload: async (formData, onProgress) => {
+    const response = await api.post('/conversations/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = progressEvent.loaded / progressEvent.total
+          onProgress(progress)
+        }
+      },
+    })
+    return response.data
+  },
 }
 
 export default api
