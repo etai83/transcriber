@@ -60,6 +60,7 @@ class TranscriptionResponse(BaseModel):
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    is_hallucination: bool = False
     
     @field_validator('transcript_segments', mode='before')
     @classmethod
@@ -93,6 +94,7 @@ class TranscriptionList(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    is_hallucination: bool = False
     
     class Config:
         from_attributes = True
@@ -143,6 +145,7 @@ class ConversationChunkResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    is_hallucination: bool = False
     
     @field_validator('transcript_segments', mode='before')
     @classmethod
