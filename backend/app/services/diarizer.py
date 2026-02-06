@@ -65,35 +65,20 @@ class DiarizerService:
                 raise FileNotFoundError(f"Missing model file: {f}")
         
         print(f"Loading segmentation model from: {segmentation_dir}")
-        segmentation_model = Model.from_pretrained(str(segmentation_dir))
+        segmentation_model = Model.from_pretrained(segmentation_dir / "pytorch_model.bin")
         
         print(f"Loading embedding model from: {embedding_dir}")
-        embedding_model = Model.from_pretrained(str(embedding_dir))
+        embedding_model = Model.from_pretrained(embedding_dir / "pytorch_model.bin")
         
-        # PLDA is required by SpeakerDiarization but not used with AgglomerativeClustering
-        # We provide a local dummy PLDA directory to avoid network requests
-        plda_dir = MODELS_DIR / "plda"
-        if not (plda_dir / "xvec_transform.npz").exists():
-            raise FileNotFoundError(
-                f"Missing PLDA files in {plda_dir}. "
-                "Run: python -c \"import numpy as np; from pathlib import Path; "
-                "p=Path('backend/models/pyannote/plda'); p.mkdir(exist_ok=True); "
-                "np.savez(p/'xvec_transform.npz', mean=np.zeros(256), transform=np.eye(128,256)); "
-                "np.savez(p/'plda.npz', psi=np.eye(128))\""
-            )
         
         # Create the pipeline with local models using AgglomerativeClustering
-        # This is the approach used by speaker-diarization-3.1, which doesn't 
-        # actually use PLDA models (they're only used for VBx clustering)
         pipeline = SpeakerDiarization(
             segmentation=segmentation_model,
             embedding=embedding_model,
-            plda=str(plda_dir),  # Local PLDA dir (not used with AgglomerativeClustering)
             clustering="AgglomerativeClustering",
             segmentation_batch_size=32,
             embedding_batch_size=32,
             embedding_exclude_overlap=True,
-            legacy=False,  # Use the new 3.x behavior
         )
         
         # Set default parameters (from the speaker-diarization-3.1 config)
@@ -166,7 +151,7 @@ class DiarizerService:
                 os.environ["HF_HUB_OFFLINE"] = "1"
                 cls._pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    token=HF_TOKEN
+                    use_auth_token=HF_TOKEN
                 )
                 cls._pipeline.to(cls._device)
                 print(f"Diarization pipeline loaded from cache on {cls._device}")
@@ -180,7 +165,7 @@ class DiarizerService:
             try:
                 cls._pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    token=HF_TOKEN
+                    use_auth_token=HF_TOKEN
                 )
                 cls._pipeline.to(cls._device)
                 print(f"Diarization pipeline downloaded and loaded on {cls._device}")
