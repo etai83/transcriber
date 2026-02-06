@@ -5,11 +5,25 @@ from .database import init_db
 from .routers import transcriptions, conversations
 from .config import settings
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize database on startup."""
+    init_db()
+    print("Database initialized")
+    print(f"Using Whisper model: {settings.whisper_model}")
+    print(f"Audio storage: {settings.audio_storage_path}")
+    print(f"Transcript storage: {settings.transcript_storage_path}")
+    yield
+    # Cleanup code can go here
+
 # Create FastAPI app
 app = FastAPI(
     title="Local Audio Transcriber",
     description="A local web application for transcribing audio files using Whisper. Supports English and Hebrew.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 import json
@@ -32,16 +46,6 @@ app.add_middleware(
 # Include routers
 app.include_router(transcriptions.router)
 app.include_router(conversations.router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup."""
-    init_db()
-    print("Database initialized")
-    print(f"Using Whisper model: {settings.whisper_model}")
-    print(f"Audio storage: {settings.audio_storage_path}")
-    print(f"Transcript storage: {settings.transcript_storage_path}")
 
 
 @app.get("/")
