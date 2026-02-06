@@ -12,10 +12,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+import json
+
 # Configure CORS for frontend
+try:
+    origins = json.loads(settings.cors_origins)
+except json.JSONDecodeError:
+    origins = ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"]
+    print("Warning: Failed to parse CORS_ORIGINS, using defaults")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
