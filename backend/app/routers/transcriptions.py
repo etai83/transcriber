@@ -83,6 +83,7 @@ def process_transcription(transcription_id: int, db_url: str, num_speakers: Opti
         transcription.transcript_text = result["text"]
         transcription.detected_language = result["language"]
         transcription.duration_sec = result["duration"]
+        transcription.is_hallucination = result.get("is_hallucination", False)
         transcription.status = "completed"
         transcription.completed_at = datetime.utcnow()
         

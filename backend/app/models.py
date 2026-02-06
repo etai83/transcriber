@@ -53,6 +53,7 @@ class Transcription(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)  # Error details if failed
+    is_hallucination = Column(Boolean, default=False)  # Flag if text is likely hallucination
     
     # Relationship to conversation
     conversation = relationship("Conversation", back_populates="chunks")

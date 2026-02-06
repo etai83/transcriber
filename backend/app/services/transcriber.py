@@ -397,16 +397,18 @@ class TranscriberService:
             text = result["text"].strip()
             
             # Detect repetitive text (hallucination indicator)
-            if cls._is_likely_hallucination(text):
+            is_hallucination = cls._is_likely_hallucination(text)
+            if is_hallucination:
                 print(f"Warning: Detected likely hallucination: '{text[:100]}...'")
-                text = ""  # Return empty string for likely hallucinations
+                # text = ""  # Don't delete text, just flag it
             
             return {
                 "text": text,
                 "language": "en",  # Output is always English
                 "source_language": source_language,  # Detected/specified source language (en or he)
                 "segments": result.get("segments", []),
-                "duration": result.get("segments", [{}])[-1].get("end", 0) if result.get("segments") else 0
+                "duration": result.get("segments", [{}])[-1].get("end", 0) if result.get("segments") else 0,
+                "is_hallucination": is_hallucination
             }
         finally:
             # Clean up all temporary files
@@ -605,16 +607,18 @@ class TranscriberService:
             
             # Check for potential hallucination
             text = whisper_result["text"].strip()
-            if cls._is_likely_hallucination(text):
+            is_hallucination = cls._is_likely_hallucination(text)
+            if is_hallucination:
                 print(f"Warning: Detected likely hallucination: '{text[:100]}...'")
-                text = ""
+                # text = ""  # Don't delete text, just flag it
             
             result = {
                 "text": text,
                 "language": "en",  # Output is always English
                 "source_language": source_language,  # Detected/specified source language (en or he)
                 "segments": whisper_result.get("segments", []),
-                "duration": whisper_result.get("segments", [{}])[-1].get("end", 0) if whisper_result.get("segments") else 0
+                "duration": whisper_result.get("segments", [{}])[-1].get("end", 0) if whisper_result.get("segments") else 0,
+                "is_hallucination": is_hallucination
             }
             
             # If transcription failed or produced empty text, skip diarization
