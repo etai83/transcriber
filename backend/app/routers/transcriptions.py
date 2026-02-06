@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, B
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from ..database import get_db
 from ..models import Transcription, Conversation
 from ..schemas import (
@@ -18,6 +21,8 @@ from ..schemas import (
 from ..services.file_manager import file_manager
 from ..services.transcriber import transcriber_service
 from ..config import settings
+import traceback
+import os
 
 router = APIRouter(prefix="/api", tags=["transcriptions"])
 
@@ -30,8 +35,7 @@ def process_transcription(transcription_id: int, db_url: str, num_speakers: Opti
         db_url: Database connection URL
         num_speakers: Number of speakers for diarization (overrides conversation setting)
     """
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
+
     
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -102,7 +106,7 @@ def process_transcription(transcription_id: int, db_url: str, num_speakers: Opti
         
     except Exception as e:
         # Handle errors
-        import traceback
+
         print(f"Transcription error: {e}")
         traceback.print_exc()
         
@@ -198,7 +202,7 @@ async def upload_audio(
     unique_name, audio_path = file_manager.save_audio_file(content, file.filename)
     
     # Generate default title from filename (remove extension)
-    import os
+
     default_title = os.path.splitext(file.filename)[0].replace('_', ' ').replace('-', ' ').title()
     
     # Create database record
@@ -215,7 +219,7 @@ async def upload_audio(
     db.refresh(transcription)
     
     # Start background transcription (pass num_speakers for diarization)
-    from ..config import settings
+
     background_tasks.add_task(
         process_transcription, 
         transcription.id, 
@@ -400,7 +404,7 @@ async def retry_transcription(
         _refresh_conversation_status(db, transcription.conversation_id)
     
     # Start background transcription
-    from ..config import settings
+
     background_tasks.add_task(process_transcription, transcription.id, settings.database_url)
     
     return TranscriptionStatus(
