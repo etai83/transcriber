@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { transcriptionApi } from '../services/api'
 import AudioPlayer from '../components/AudioPlayer'
@@ -17,34 +17,42 @@ function ViewTranscription() {
   })
   const [saving, setSaving] = useState(false)
 
-  const fetchTranscription = async () => {
+  const fetchTranscription = useCallback(async (isPolling = false) => {
     try {
       const data = await transcriptionApi.get(id)
       setTranscription(data)
-      setEditForm({
-        title: data.title || '',
-        description: data.description || '',
-        transcript_text: data.transcript_text || '',
-      })
-      setError(null)
+
+      // Only update edit form if not currently editing to avoid losing user input
+      if (!isEditing) {
+        setEditForm({
+          title: data.title || '',
+          description: data.description || '',
+          transcript_text: data.transcript_text || '',
+        })
+      }
+
+      if (!isPolling) setError(null)
     } catch (err) {
-      setError('Failed to load transcription')
+      console.error('Failed to load transcription:', err)
+      if (!isPolling) {
+        setError('Failed to load transcription')
+      }
     } finally {
-      setLoading(false)
+      if (!isPolling) setLoading(false)
     }
-  }
+  }, [id, isEditing])
 
   useEffect(() => {
     fetchTranscription()
-  }, [id])
+  }, [fetchTranscription])
 
   // Poll for updates if still processing
   useEffect(() => {
     if (transcription?.status === 'pending' || transcription?.status === 'processing') {
-      const interval = setInterval(fetchTranscription, 3000)
+      const interval = setInterval(() => fetchTranscription(true), 3000)
       return () => clearInterval(interval)
     }
-  }, [transcription?.status])
+  }, [transcription?.status, fetchTranscription])
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this transcription?')) {
@@ -191,7 +199,7 @@ function ViewTranscription() {
             <Link to="/" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
               &larr; Back to list
             </Link>
-            
+
             {isEditing ? (
               <div className="mt-2 space-y-3">
                 <div>
@@ -225,7 +233,7 @@ function ViewTranscription() {
                 )}
               </>
             )}
-            
+
             <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
               <span>Created: {formatDate(transcription.created_at)}</span>
               <span>Duration: {formatDuration(transcription.duration_sec)}</span>
@@ -239,7 +247,7 @@ function ViewTranscription() {
           </div>
           <div className="flex items-center space-x-3">
             {getStatusBadge(transcription.status)}
-            
+
             {/* Edit/Save/Cancel buttons */}
             {transcription.status === 'completed' && !isEditing && (
               <button
@@ -252,7 +260,7 @@ function ViewTranscription() {
                 </svg>
               </button>
             )}
-            
+
             {isEditing && (
               <>
                 <button
@@ -271,7 +279,7 @@ function ViewTranscription() {
                 </button>
               </>
             )}
-            
+
             <button
               onClick={handleDelete}
               className="p-2 text-gray-400 hover:text-red-500 transition-colors"
@@ -348,7 +356,7 @@ function ViewTranscription() {
               placeholder="Enter transcript text..."
             />
           ) : (
-            <div 
+            <div
               className="prose max-w-none p-4 bg-gray-50 rounded-lg whitespace-pre-wrap"
               dir={transcription.detected_language === 'he' ? 'rtl' : 'ltr'}
             >
