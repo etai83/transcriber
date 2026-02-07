@@ -394,7 +394,20 @@ class TranscriberService:
             options["language"] = source_language
             
             # Perform transcription (with translation to English)
-            result = model.transcribe(transcribe_path, **options)
+            try:
+                result = model.transcribe(transcribe_path, **options)
+            except RuntimeError as e:
+                if "cannot reshape tensor of 0 elements" in str(e):
+                    print(f"Whisper processing failed: audio likely too short or empty. Error: {e}")
+                    return {
+                        "text": "",
+                        "language": "en",
+                        "source_language": source_language,
+                        "segments": [],
+                        "duration": 0,
+                        "is_hallucination": False
+                    }
+                raise e
             
             # Check for potential hallucination indicators
             text = result["text"].strip()
@@ -605,7 +618,26 @@ class TranscriberService:
                 "language": source_language,  # Restricted to en/he only
             }
             
-            whisper_result = model.transcribe(transcribe_path, **options)
+            try:
+                whisper_result = model.transcribe(transcribe_path, **options)
+            except RuntimeError as e:
+                # Handle empty/short audio error gracefully
+                if "cannot reshape tensor of 0 elements" in str(e):
+                    print(f"Whisper processing failed: audio likely too short or empty. Error: {e}")
+                    return {
+                        "text": "",
+                        "language": "en",
+                        "source_language": source_language,
+                        "segments": [],
+                        "duration": 0,
+                        "is_hallucination": False,
+                        "transcript_segments": {
+                            "segments": [],
+                            "speakers": [],
+                            "full_text": ""
+                        }
+                    }
+                raise e
             
             # Check for potential hallucination
             text = whisper_result["text"].strip()

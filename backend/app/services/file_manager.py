@@ -68,14 +68,20 @@ class FileManager:
     def delete_files(self, audio_path: str = None, transcript_path: str = None):
         """Delete audio and/or transcript files."""
         if audio_path:
-            path = Path(audio_path)
-            if path.exists():
-                path.unlink()
+            try:
+                path = Path(audio_path)
+                if path.exists():
+                    path.unlink()
+            except Exception as e:
+                print(f"Error deleting audio file {audio_path}: {e}")
         
         if transcript_path:
-            path = Path(transcript_path)
-            if path.exists():
-                path.unlink()
+            try:
+                path = Path(transcript_path)
+                if path.exists():
+                    path.unlink()
+            except Exception as e:
+                print(f"Error deleting transcript file {transcript_path}: {e}")
     
     def get_supported_extensions(self) -> list:
         """Return list of supported audio file extensions."""
