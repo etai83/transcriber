@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Live Recording with AI Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f6df0",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101822",
+                        "surface-dark": "#1a222d",
+                        "surface-light": "#ffffff",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "2xl": "1rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.2);
+            border-radius: 20px;
+        }
+        .waveform-bar {
+            @apply bg-primary rounded-full shrink-0;
+            width: 2px;
+            margin: 0 1px;
+        }
+        .speaker-a { @apply border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10; }
+        .speaker-b { @apply border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-900/10; }
+        .speaker-hebrew { @apply border-r-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10 border-l-0; }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark min-h-screen flex justify-center overflow-x-hidden font-display">
+<div class="w-full max-w-md bg-background-light dark:bg-background-dark h-screen flex flex-col relative shadow-2xl overflow-hidden">
+<header class="flex items-center justify-between px-4 py-3 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md z-30 sticky top-0 border-b border-gray-200 dark:border-gray-800 shrink-0">
+<button class="text-gray-900 dark:text-white p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-[28px]">menu</span>
+</button>
+<h1 class="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Live Recording</h1>
+<div class="w-9 h-9 rounded-full bg-gray-200 dark:bg-surface-dark overflow-hidden border border-gray-300 dark:border-gray-700 shrink-0">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsD2yA92bDvPgxGl3wsqI4nfXujc_-f7VanG1E5ZNUbTuArmBbzjTuYekNTvS5ZwedTV9htLw_dzEgurtUiQP-ITRT8k8At_-mzZAa1BXwLpfIE6u49O5aeLrOvDeUEk0p1zUHA2eZ1SHFI_7TEAdRCL-NccN_LRgwMtr_hS9fYIefWNqcmqp04rW4OssjAN8_fy9jLHm3GGy8JQSGgOshz1Z9giQPqUu6qZtAv3a8CNBK8HUHfvLu3yNRe_tB4AYMb5IGjKbVgU4"/>
+</div>
+</header>
+<main class="flex-1 flex flex-col overflow-hidden relative">
+<div class="px-4 pt-3 pb-2 bg-background-light dark:bg-background-dark z-20 shadow-sm shrink-0">
+<div class="flex gap-2 mb-3">
+<button class="flex-1 flex items-center justify-center gap-2 py-2 bg-primary text-white rounded-xl font-bold shadow-md shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-[18px]">mic</span>
+<span class="text-xs">Record</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-2 py-2 bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-xl font-bold transition-all">
+<span class="material-symbols-outlined text-[18px]">upload_file</span>
+<span class="text-xs">Upload</span>
+</button>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-md p-3">
+<button class="w-full flex items-center justify-between px-2.5 py-1 mb-2.5 bg-gray-50 dark:bg-background-dark/50 rounded-lg border border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-semibold">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[14px]">settings_input_antenna</span>
+<span>Built-in Mic</span>
+</div>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+</button>
+<div class="flex items-center justify-between gap-3 mb-3">
+<div class="flex items-center gap-2 shrink-0">
+<div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+<span class="text-xl font-mono font-bold text-gray-900 dark:text-white tabular-nums">00:12:45</span>
+</div>
+<div class="flex-1 h-5 flex items-center justify-end gap-[2px] overflow-hidden opacity-80">
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-4"></div>
+<div class="waveform-bar h-3"></div>
+<div class="waveform-bar h-5"></div>
+<div class="waveform-bar h-2"></div>
+<div class="waveform-bar h-4"></div>
+<div class="waveform-bar h-6"></div>
+<div class="waveform-bar h-3"></div>
+<div class="waveform-bar h-5"></div>
+<div class="waveform-bar h-4"></div>
+</div>
+</div>
+<div class="flex items-center justify-between gap-2">
+<button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 active:bg-gray-100 dark:active:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 text-[18px]">pause</span>
+<span class="text-[9px] font-bold text-gray-500 uppercase">Pause</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 shadow-sm active:scale-95 transition-all">
+<span class="material-symbols-outlined text-white text-[18px]">stop</span>
+<span class="text-[9px] font-bold text-white uppercase">Stop</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 active:bg-gray-100 dark:active:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 text-[18px]">flag</span>
+<span class="text-[9px] font-bold text-gray-500 uppercase">Flag</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-4 pt-2 pb-64 space-y-4">
+<div class="speaker-a p-3 rounded-r-xl">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">JD</div>
+<span class="text-[11px] font-bold text-blue-700 dark:text-blue-400">John Doe</span>
+<span class="text-[10px] text-gray-400 font-mono">12:40:02</span>
+</div>
+<p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        The current progress on the backend looks promising. We should be ready for the load testing by Thursday morning.
+                    </p>
+</div>
+<div class="speaker-hebrew p-3 rounded-l-xl" dir="rtl">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-bold">שר</div>
+<span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">שרה כהן</span>
+<span class="text-[10px] text-gray-400 font-mono mr-auto" dir="ltr">12:40:15</span>
+</div>
+<p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        מעולה, אני אעדכן את צוות הפיתוח. האם אנחנו צריכים משאבים נוספים עבור השרתים החדשים?
+                    </p>
+</div>
+<div class="speaker-a p-3 rounded-r-xl">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white font-bold">JD</div>
+<span class="text-[11px] font-bold text-blue-700 dark:text-blue-400">John Doe</span>
+<span class="text-[10px] text-gray-400 font-mono">12:41:05</span>
+</div>
+<p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        I think we have enough for now. Let's see the results of the initial stress tests before requesting more.
+                    </p>
+</div>
+<div class="speaker-b p-3 rounded-r-xl">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-[10px] text-white font-bold">AL</div>
+<span class="text-[11px] font-bold text-purple-700 dark:text-purple-400">Alice Lee</span>
+<span class="text-[10px] text-gray-400 font-mono">12:41:45</span>
+</div>
+<p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        Don't forget the API documentation needs updating too. I can handle the endpoints for the search service.
+                    </p>
+</div>
+<div class="speaker-hebrew p-3 rounded-l-xl" dir="rtl">
+<div class="flex items-center gap-2 mb-1">
+<div class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-bold">שר</div>
+<span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">שרה כהן</span>
+<span class="text-[10px] text-gray-400 font-mono mr-auto" dir="ltr">12:42:30</span>
+</div>
+<p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        אני אתחיל לעבוד על המצגת לסיכום הרבעון מחר בבוקר. <span class="text-primary font-bold underline decoration-dotted">מתמלל כעת...</span>
+</p>
+</div>
+<div class="h-24"></div>
+</div>
+</main>
+<div class="fixed bottom-[74px] left-0 right-0 z-40 w-full max-w-md mx-auto">
+<div class="bg-gray-900/95 dark:bg-black/90 backdrop-blur-md rounded-t-xl rounded-b-none p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.4)] border-t border-white/10 ring-0">
+<div class="flex items-start gap-3">
+<div class="mt-0.5 w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[22px]">psychology</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-1.5">
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                        Ambiguity Detected
+                    </span>
+<button class="text-gray-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+<p class="text-[13px] text-gray-200 font-medium leading-snug">
+                    Shara mentioned server resources. It's unclear if she refers to the staging or production cluster.
+                </p>
+<div class="flex gap-2 mt-4">
+<button class="flex-1 py-3 bg-primary hover:bg-primary/90 text-white text-[12px] font-bold rounded-lg shadow-sm shadow-primary/30 active:scale-[0.98] transition-all">
+                        Ask Speaker
+                    </button>
+<button class="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 text-[12px] font-bold rounded-lg active:scale-[0.98] transition-all">
+                        Mark for Later
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<nav class="shrink-0 w-full bg-surface-light dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 pb-6 pt-3 px-6 flex justify-between items-center z-50">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[24px] fill-current">mic</span>
+<span class="text-[9px] font-medium">Live</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined text-[24px]">folder_open</span>
+<span class="text-[9px] font-medium">Files</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined text-[24px]">analytics</span>
+<span class="text-[9px] font-medium">Insights</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="text-[9px] font-medium">Settings</span>
+</button>
+</nav>
+</div>
+</body></html>
