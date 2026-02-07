@@ -13,6 +13,7 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -34,4 +35,38 @@ body {
     'wght' 400,
     'GRAD' 0,
     'opsz' 24;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.2);
+  border-radius: 20px;
+}
+
+/* Speaker segment styles */
+.speaker-a {
+  @apply border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-900/10;
+}
+
+.speaker-b {
+  @apply border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-900/10;
+}
+
+.speaker-hebrew {
+  @apply border-r-4 border-l-0 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10;
+}
+
+/* Waveform bar styles */
+.waveform-bar {
+  @apply bg-primary rounded-full shrink-0;
+  width: 2px;
+  margin: 0 1px;
 }

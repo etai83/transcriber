@@ -3,6 +3,7 @@ import torch
 import subprocess
 import tempfile
 import os
+import threading
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pathlib import Path
@@ -17,6 +18,7 @@ class TranscriberService:
     
     _model = None
     _model_name = None
+    _model_lock = threading.Lock()  # Lock to prevent concurrent model access
     
     @classmethod
     def get_model(cls):
@@ -293,8 +295,9 @@ class TranscriberService:
         n_mels = model.dims.n_mels
         mel = whisper.log_mel_spectrogram(audio, n_mels=n_mels).to(model.device)
         
-        # Detect language probabilities
-        _, probs = model.detect_language(mel)
+        # Detect language probabilities (use lock for thread safety)
+        with cls._model_lock:
+            _, probs = model.detect_language(mel)
         
         # Get probabilities for English and Hebrew only
         en_prob = probs.get("en", 0)
@@ -394,8 +397,10 @@ class TranscriberService:
             options["language"] = source_language
             
             # Perform transcription (with translation to English)
+            # Use lock to prevent concurrent access to model (causes kv_cache corruption)
             try:
-                result = model.transcribe(transcribe_path, **options)
+                with cls._model_lock:
+                    result = model.transcribe(transcribe_path, **options)
             except RuntimeError as e:
                 if "cannot reshape tensor of 0 elements" in str(e):
                     print(f"Whisper processing failed: audio likely too short or empty. Error: {e}")
@@ -618,8 +623,10 @@ class TranscriberService:
                 "language": source_language,  # Restricted to en/he only
             }
             
+            # Use lock to prevent concurrent access to model (causes kv_cache corruption)
             try:
-                whisper_result = model.transcribe(transcribe_path, **options)
+                with cls._model_lock:
+                    whisper_result = model.transcribe(transcribe_path, **options)
             except RuntimeError as e:
                 # Handle empty/short audio error gracefully
                 if "cannot reshape tensor of 0 elements" in str(e):

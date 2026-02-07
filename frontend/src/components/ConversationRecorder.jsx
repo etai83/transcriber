@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { conversationApi, transcriptionApi } from '../services/api'
 
-function ConversationRecorder({ onRecordingComplete, compact = false }) {
+function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, compact = false }) {
   const navigate = useNavigate()
 
   // Recording state
@@ -84,7 +84,11 @@ function ConversationRecorder({ onRecordingComplete, compact = false }) {
 
   useEffect(() => {
     isRecordingRef.current = isRecording
-  }, [isRecording])
+    // Notify parent of recording state change
+    if (onRecordingStateChange) {
+      onRecordingStateChange(isRecording)
+    }
+  }, [isRecording, onRecordingStateChange])
 
   useEffect(() => {
     isPausedRef.current = isPaused
@@ -544,8 +548,12 @@ function ConversationRecorder({ onRecordingComplete, compact = false }) {
 
   // Compact dark-themed version for use in Dashboard Record tab
   if (compact) {
+    // Get completed chunks with transcripts for live display
+    const completedChunks = chunks.filter(c => c.status === 'completed' && c.transcript_text)
+    const processingChunks = chunks.filter(c => c.status === 'pending' || c.status === 'processing')
+
     return (
-      <div className="flex flex-col items-center py-8">
+      <div className="flex flex-col">
         {/* Error Messages */}
         {error && (
           <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-400 text-sm w-full">
@@ -564,110 +572,169 @@ function ConversationRecorder({ onRecordingComplete, compact = false }) {
           </div>
         )}
 
-        {/* Recording Visualizer */}
-        <div className={`size-20 rounded-full flex items-center justify-center transition-all duration-300 mb-4 ${isRecording
-            ? isPaused
-              ? 'bg-amber-500/20'
-              : 'bg-red-500/20 animate-pulse'
-            : 'bg-slate-800'
-          }`}>
-          {isRecording ? (
-            <div className="flex items-center space-x-1">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1 bg-red-500 rounded-full transition-all duration-75`}
-                  style={{
-                    height: isPaused ? '12px' : `${Math.max(6, (audioLevel / 100) * 24 + Math.random() * 6)}px`,
-                  }}
-                />
-              ))}
+        {/* Recording Controls - Compact Row */}
+        <div className="flex items-center justify-between gap-4 py-4">
+          {/* Visualizer + Timer */}
+          <div className="flex items-center gap-3">
+            <div className={`size-12 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
+              ? isPaused
+                ? 'bg-amber-500/20'
+                : 'bg-red-500/20 animate-pulse'
+              : 'bg-slate-800'
+              }`}>
+              {isRecording ? (
+                <div className="flex items-center space-x-0.5">
+                  {[...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-1 bg-red-500 rounded-full transition-all duration-75"
+                      style={{
+                        height: isPaused ? '10px' : `${Math.max(4, (audioLevel / 100) * 18 + Math.random() * 4)}px`,
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <span className="material-symbols-outlined text-2xl text-slate-400">mic</span>
+              )}
             </div>
-          ) : (
-            <span className="material-symbols-outlined text-3xl text-slate-400">mic</span>
-          )}
+
+            <div className="flex flex-col">
+              <div className={`text-xl font-mono ${isRecording ? 'text-red-500' : 'text-slate-500'}`}>
+                {formatTime(recordingTime)}
+              </div>
+              {isRecording && (
+                <div className="text-[10px] text-slate-500">
+                  Chunk {chunkIndex + 1} • {formatTime(chunkTime)}/{formatTime(chunkInterval)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Control Buttons */}
+          <div className="flex items-center gap-2">
+            {!isRecording ? (
+              conversationId ? (
+                <>
+                  <button
+                    onClick={viewConversation}
+                    className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    View
+                  </button>
+                  <button
+                    onClick={startNewRecording}
+                    className="px-4 py-2 border border-slate-600 text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
+                  >
+                    New
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="size-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-red-500/30"
+                  title="Start Recording"
+                >
+                  <span className="material-symbols-outlined text-xl">mic</span>
+                </button>
+              )
+            ) : (
+              <>
+                <button
+                  onClick={pauseRecording}
+                  className={`size-9 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white'
+                    }`}
+                  title={isPaused ? 'Resume' : 'Pause'}
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    {isPaused ? 'play_arrow' : 'pause'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={stopRecording}
+                  className="size-12 bg-slate-700 hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                  title="Stop Recording"
+                >
+                  <span className="material-symbols-outlined text-xl">stop</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Timer */}
-        <div className={`text-3xl font-mono mb-4 ${isRecording ? 'text-red-500' : 'text-slate-500'}`}>
-          {formatTime(recordingTime)}
-        </div>
-
-        {/* Chunk Progress */}
+        {/* Chunk Progress Bar */}
         {isRecording && (
-          <div className="text-xs text-slate-500 mb-4">
-            Chunk {chunkIndex + 1}: {formatTime(chunkTime)} / {formatTime(chunkInterval)}
-            <div className="w-32 mx-auto mt-1 bg-slate-700 rounded-full h-1">
-              <div
-                className="bg-primary h-1 rounded-full transition-all duration-1000"
-                style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
-              />
+          <div className="w-full bg-slate-700 rounded-full h-1 mb-4">
+            <div
+              className="bg-primary h-1 rounded-full transition-all duration-1000"
+              style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
+            />
+          </div>
+        )}
+
+        {/* Live Transcript Display */}
+        {(isRecording || chunks.length > 0) && (
+          <div className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden mb-4">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-sm">subtitles</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Transcript</span>
+              </div>
+              {processingChunks.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                  <span className="text-[10px] text-amber-500 font-medium">Processing {processingChunks.length} chunk{processingChunks.length > 1 ? 's' : ''}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="max-h-48 overflow-y-auto p-3 space-y-3">
+              {completedChunks.length === 0 && processingChunks.length === 0 && !isRecording && (
+                <p className="text-slate-500 text-sm text-center py-4">No transcripts yet</p>
+              )}
+
+              {completedChunks.length === 0 && (isRecording || processingChunks.length > 0) && (
+                <p className="text-slate-500 text-sm text-center py-4">
+                  {isRecording ? 'Waiting for first chunk to complete...' : 'Processing transcription...'}
+                </p>
+              )}
+
+              {completedChunks.map((chunk, idx) => {
+                // Detect if Hebrew (RTL)
+                const isHebrew = chunk.transcript_text?.match(/[\u0590-\u05FF]/)
+                // Alternate speaker colors
+                const speakerClass = idx % 2 === 0 ? 'border-l-2 border-blue-500 pl-3' : 'border-l-2 border-purple-500 pl-3'
+
+                return (
+                  <div
+                    key={chunk.id}
+                    className={`${isHebrew ? 'text-right border-r-2 border-l-0 pr-3 pl-0 border-emerald-500' : speakerClass}`}
+                    dir={isHebrew ? 'rtl' : 'ltr'}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[10px] text-slate-500 font-mono">Chunk {chunk.chunk_index + 1}</span>
+                    </div>
+                    <p className="text-sm text-slate-200 leading-relaxed">{chunk.transcript_text}</p>
+                  </div>
+                )
+              })}
+
+              {/* Processing indicators */}
+              {processingChunks.map((chunk) => (
+                <div key={chunk.id} className="flex items-center gap-2 text-slate-500 py-2">
+                  <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  <span className="text-xs">Processing chunk {chunk.chunk_index + 1}...</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Control Buttons */}
-        <div className="flex items-center justify-center gap-4">
-          {!isRecording ? (
-            conversationId ? (
-              <>
-                <button
-                  onClick={viewConversation}
-                  className="px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-blue-600 transition-colors"
-                >
-                  View Transcript
-                </button>
-                <button
-                  onClick={startNewRecording}
-                  className="px-5 py-2.5 border border-slate-600 text-slate-300 text-sm font-bold rounded-xl hover:bg-slate-800 transition-colors"
-                >
-                  New Recording
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={startRecording}
-                className="size-14 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-red-500/30"
-                title="Start Recording"
-              >
-                <span className="material-symbols-outlined text-2xl">mic</span>
-              </button>
-            )
-          ) : (
-            <>
-              <button
-                onClick={pauseRecording}
-                className={`size-10 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
-                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                    : 'bg-amber-500 hover:bg-amber-600 text-white'
-                  }`}
-                title={isPaused ? 'Resume' : 'Pause'}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {isPaused ? 'play_arrow' : 'pause'}
-                </span>
-              </button>
-
-              <button
-                onClick={stopRecording}
-                className="size-14 bg-slate-700 hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
-                title="Stop Recording"
-              >
-                <span className="material-symbols-outlined text-2xl">stop</span>
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Status Text */}
-        {isRecording && (
-          <p className="mt-4 text-xs text-slate-500">
-            {isPaused ? 'Recording paused' : `Recording... Transcribing every ${chunkInterval}s`}
-          </p>
-        )}
-
         {/* Privacy Indicator */}
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="flex items-center justify-center gap-2 py-2">
           <span className="material-symbols-outlined text-slate-400 text-sm">shield_lock</span>
           <p className="text-slate-400 text-xs font-medium">Secure Local Processing (Device Only)</p>
         </div>
@@ -703,10 +770,10 @@ function ConversationRecorder({ onRecordingComplete, compact = false }) {
           {/* Recording Visualizer */}
           <div className="mb-6">
             <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-                ? isPaused
-                  ? 'bg-yellow-100'
-                  : 'bg-red-100 animate-pulse'
-                : 'bg-gray-100'
+              ? isPaused
+                ? 'bg-yellow-100'
+                : 'bg-red-100 animate-pulse'
+              : 'bg-gray-100'
               }`}>
               {isRecording ? (
                 <div className="flex items-center space-x-1">
@@ -806,8 +873,8 @@ function ConversationRecorder({ onRecordingComplete, compact = false }) {
                 <button
                   onClick={pauseRecording}
                   className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
-                      ? 'bg-green-500 hover:bg-green-600 text-white'
-                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
                     }`}
                   title={isPaused ? 'Resume' : 'Pause'}
                 >
