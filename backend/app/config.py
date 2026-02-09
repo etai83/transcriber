@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     ai_assistant_max_context_chunks: int = 3
     
+    # HuggingFace
+    hf_token: str = ""
+    
     # Storage paths
     audio_storage_path: str = "./storage/audio"
     transcript_storage_path: str = "./storage/transcripts"

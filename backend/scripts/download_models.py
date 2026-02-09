@@ -19,6 +19,7 @@ If you have SSL issues (corporate proxy), run with:
 import os
 import sys
 import ssl
+from pathlib import Path
 
 # Workaround for SSL certificate issues (corporate proxies, VPNs)
 # This disables SSL verification - only use for downloading models
@@ -34,9 +35,18 @@ if os.environ.get("DISABLE_SSL_VERIFY") or os.environ.get("SSL_CERT_FILE") == ""
     os.environ["CURL_CA_BUNDLE"] = ""
     os.environ["REQUESTS_CA_BUNDLE"] = ""
 
+# Try to load .env file
+try:
+    from dotenv import load_dotenv
+    # Path to .env (one level up from scripts/)
+    env_path = Path(__file__).parent.parent / ".env"
+    load_dotenv(dotenv_path=env_path)
+except ImportError:
+    pass
+
 # HuggingFace token for pyannote model access
 # This token has been accepted for pyannote terms of service
-HF_TOKEN = "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"
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 
 def download_models():
@@ -68,6 +78,11 @@ def download_models():
         print("Note: Running on CPU. GPU/MPS recommended for faster diarization.")
     print()
     
+    if not HF_TOKEN:
+        print("Error: HF_TOKEN not found in environment or .env file.")
+        print("Please set HF_TOKEN in your .env file.")
+        sys.exit(1)
+        
     print("Downloading pyannote/speaker-diarization-3.1...")
     print("This may take several minutes on first run.")
     print()

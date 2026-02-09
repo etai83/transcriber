@@ -21,9 +21,7 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import torch
-
-# HuggingFace token for pyannote model access
-HF_TOKEN = "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"
+from ..config import settings
 
 # Path to local models directory
 MODELS_DIR = Path(__file__).parent.parent.parent / "models" / "pyannote"
@@ -151,7 +149,7 @@ class DiarizerService:
                 os.environ["HF_HUB_OFFLINE"] = "1"
                 cls._pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    use_auth_token=HF_TOKEN
+                    use_auth_token=settings.hf_token
                 )
                 cls._pipeline.to(cls._device)
                 print(f"Diarization pipeline loaded from cache on {cls._device}")
@@ -165,7 +163,7 @@ class DiarizerService:
             try:
                 cls._pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    use_auth_token=HF_TOKEN
+                    use_auth_token=settings.hf_token
                 )
                 cls._pipeline.to(cls._device)
                 print(f"Diarization pipeline downloaded and loaded on {cls._device}")
