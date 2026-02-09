@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ConversationRecorder from '../components/ConversationRecorder'
-import AIAssistant from '../components/AIAssistant'
+
 import { conversationApi, transcriptionApi } from '../services/api'
 import ConfirmDialog from '../components/ConfirmDialog'
 
@@ -430,12 +430,7 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                                 compact={true}
                             />
 
-                            {/* Embedded AI Assistant */}
-                            {isRecording && (
-                                <div className="mt-4 animate-slide-up">
-                                    <AIAssistant className="shadow-none border-t border-white/5 rounded-none bg-transparent" />
-                                </div>
-                            )}
+                            {/* Embedded AI Assistant removed, now inside ConversationRecorder */}
                         </div>
                     </div>
                 )}
@@ -468,8 +463,8 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                             <button
                                 onClick={() => setFilterType('all')}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'all'
-                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
                                 All
@@ -477,8 +472,8 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                             <button
                                 onClick={() => setFilterType('conversation')}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'conversation'
-                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
                                 Conversations
@@ -486,8 +481,8 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                             <button
                                 onClick={() => setFilterType('transcription')}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'transcription'
-                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                             >
                                 Uploads
