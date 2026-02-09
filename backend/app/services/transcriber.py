@@ -8,38 +8,32 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from ..config import settings
-
-
+from .interfaces import TranscriptionProvider, TranscriptionResult
 from .diarizer import diarizer_service
 import traceback
 
-class TranscriberService:
+class WhisperTranscriptionProvider(TranscriptionProvider):
     """Service for transcribing audio files using Whisper."""
     
     _model = None
     _model_name = None
     _model_lock = threading.Lock()  # Lock to prevent concurrent model access
     
-    @classmethod
-    def get_model(cls):
+    def get_model(self):
         """Load and cache the Whisper model."""
-        if cls._model is None or cls._model_name != settings.whisper_model:
+        if self._model is None or self._model_name != settings.whisper_model:
             print(f"Loading Whisper model: {settings.whisper_model}")
             # Check for GPU availability
             device = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"Using device: {device}")
-            cls._model = whisper.load_model(settings.whisper_model, device=device)
-            cls._model_name = settings.whisper_model
+            self._model = whisper.load_model(settings.whisper_model, device=device)
+            self._model_name = settings.whisper_model
             print("Model loaded successfully")
-        return cls._model
+        return self._model
     
-    @classmethod
-    def get_audio_stats(cls, audio_path: str) -> Optional[Dict[str, float]]:
+    def get_audio_stats(self, audio_path: str) -> Optional[Dict[str, float]]:
         """
         Get audio statistics using FFmpeg's volumedetect filter.
-        
-        Returns:
-            Dictionary with mean_volume and max_volume in dB, or None if failed
         """
         try:
             # Build command - explicitly specify format for WebM files to avoid misdetection
@@ -79,23 +73,12 @@ class TranscriberService:
             print(f"Error getting audio stats: {e}")
             return None
     
-    @classmethod
-    def normalize_audio(cls, audio_path: str, target_db: float = -20.0) -> Optional[str]:
+    def normalize_audio(self, audio_path: str, target_db: float = -20.0) -> Optional[str]:
         """
         Normalize audio volume to a target level using FFmpeg.
-        
-        This is critical for browser-recorded audio which often has very low volume
-        (~-70 dB) that causes Whisper to produce hallucinations.
-        
-        Args:
-            audio_path: Path to the input audio file
-            target_db: Target mean volume in dB (default -20 dB, which is good for speech)
-            
-        Returns:
-            Path to the normalized audio file, or None if normalization failed
         """
         # First, analyze the current volume
-        stats = cls.get_audio_stats(audio_path)
+        stats = self.get_audio_stats(audio_path)
         if not stats:
             print("Could not analyze audio volume, skipping normalization")
             return None
@@ -124,11 +107,9 @@ class TranscriberService:
         
         try:
             # Use FFmpeg to apply gain and normalize
-            # Also apply a limiter to prevent clipping
-            # Explicitly specify format for WebM files to avoid misdetection
             cmd = ["ffmpeg", "-y"]
             if audio_path.lower().endswith('.webm'):
-                cmd.extend(["-f", "matroska"])  # WebM is based on Matroska
+                cmd.extend(["-f", "matroska"])
             cmd.extend([
                 "-i", audio_path,
                 "-af", f"volume={gain}dB,alimiter=limit=0.95:attack=5:release=50",
@@ -152,7 +133,7 @@ class TranscriberService:
                 return None
             
             # Log the new volume for verification
-            new_stats = cls.get_audio_stats(temp_path)
+            new_stats = self.get_audio_stats(temp_path)
             if new_stats:
                 print(f"After normalization: mean={new_stats['mean_volume']:.1f} dB")
             
@@ -164,26 +145,17 @@ class TranscriberService:
                 os.unlink(temp_path)
             return None
     
-    @classmethod
-    def convert_to_wav(cls, audio_path: str) -> Optional[str]:
+    def convert_to_wav(self, audio_path: str) -> Optional[str]:
         """
         Convert audio file to WAV format for reliable processing.
-        This fixes issues with WebM files that have missing duration metadata.
-        
-        Args:
-            audio_path: Path to the input audio file
-            
-        Returns:
-            Path to the converted WAV file, or None if conversion failed
         """
         temp_fd, temp_path = tempfile.mkstemp(suffix=".wav")
         os.close(temp_fd)
         
         try:
-            # Build command - explicitly specify format for WebM files to avoid misdetection
             cmd = ["ffmpeg", "-y"]
             if audio_path.lower().endswith('.webm'):
-                cmd.extend(["-f", "matroska"])  # WebM is based on Matroska
+                cmd.extend(["-f", "matroska"])
             cmd.extend([
                 "-i", audio_path,
                 "-ar", "16000",  # Whisper expects 16kHz
@@ -217,18 +189,9 @@ class TranscriberService:
                 os.unlink(temp_path)
             return None
     
-    @classmethod
-    def trim_silence(cls, audio_path: str, threshold_db: str = "-30dB", min_duration: float = 0.5) -> str:
+    def trim_silence(self, audio_path: str, threshold_db: str = "-30dB", min_duration: float = 0.5) -> str:
         """
         Remove silence from audio file using FFmpeg's silenceremove filter.
-        
-        Args:
-            audio_path: Path to the input audio file
-            threshold_db: Silence threshold in dB (default -30dB)
-            min_duration: Minimum silence duration to remove in seconds
-            
-        Returns:
-            Path to the trimmed audio file (temporary file)
         """
         # Create a temporary file for the trimmed audio
         _, ext = os.path.splitext(audio_path)
@@ -236,12 +199,9 @@ class TranscriberService:
         os.close(temp_fd)
         
         try:
-            # Use FFmpeg silenceremove filter
-            # This removes silence from the start and end, and optionally internal silence
-            # Explicitly specify format for WebM files to avoid misdetection
             cmd = ["ffmpeg", "-y"]
             if audio_path.lower().endswith('.webm'):
-                cmd.extend(["-f", "matroska"])  # WebM is based on Matroska
+                cmd.extend(["-f", "matroska"])
             cmd.extend([
                 "-i", audio_path,
                 "-af", f"silenceremove=start_periods=1:start_duration={min_duration}:start_threshold={threshold_db}:stop_periods=-1:stop_duration={min_duration}:stop_threshold={threshold_db}",
@@ -270,33 +230,22 @@ class TranscriberService:
                 os.unlink(temp_path)
             return audio_path
     
-    @classmethod
-    def detect_language_restricted(cls, audio_path: str) -> str:
+    def detect_language_restricted(self, audio_path: str) -> str:
         """
         Detect language from audio, restricted to English or Hebrew only.
-        
-        Whisper may detect other languages, but we force the result to be
-        either 'en' or 'he' based on which has the higher probability.
-        
-        Args:
-            audio_path: Path to the audio file (should be WAV for best results)
-            
-        Returns:
-            Language code: 'en' or 'he'
         """
-        model = cls.get_model()
+        model = self.get_model()
         
         # Load audio and get mel spectrogram
         audio = whisper.load_audio(audio_path)
         audio = whisper.pad_or_trim(audio)
         
         # Use the model's feature dimension (n_mels)
-        # large-v3 uses 128 mel bins, older models use 80
         n_mels = model.dims.n_mels
         mel = whisper.log_mel_spectrogram(audio, n_mels=n_mels).to(model.device)
         
         # Detect language probabilities (use lock for thread safety)
-        with cls._model_lock:
+        with self.__class__._model_lock:
             _, probs = model.detect_language(mel)
         
         # Get probabilities for English and Hebrew only
@@ -310,138 +259,9 @@ class TranscriberService:
         
         return detected
     
-    @classmethod
-    def transcribe(cls, audio_path: str, language: str = "auto", trim_silence: bool = False) -> Dict[str, Any]:
-        """
-        Transcribe an audio file.
-        
-        Args:
-            audio_path: Path to the audio file
-            language: Language code ('en', 'he') or 'auto' for detection
-            trim_silence: Whether to remove silence from audio before transcribing
-            
-        Returns:
-            Dictionary with transcription results
-        """
-        model = cls.get_model()
-        
-        temp_files = []  # Track all temporary files for cleanup
-        transcribe_path = audio_path
-        
-        # Convert WebM files to WAV for reliable processing
-        # WebM files from browser MediaRecorder often have missing duration metadata
-        if audio_path.lower().endswith('.webm'):
-            print("Converting WebM to WAV for reliable processing...")
-            wav_path = cls.convert_to_wav(audio_path)
-            if wav_path:
-                temp_files.append(wav_path)
-                transcribe_path = wav_path
-                print("WebM converted to WAV successfully")
-            else:
-                print("WebM conversion failed, attempting to use original file")
-        
-        # Check audio duration - skip very short files that cause errors
-        duration = cls.get_audio_duration(transcribe_path)
-        print(f"Audio duration: {duration:.2f} seconds")
-        if duration < 0.5:
-            print(f"Audio too short ({duration:.2f}s), skipping transcription")
-            # Clean up temp files before returning
-            for temp_path in temp_files:
-                if temp_path and os.path.exists(temp_path):
-                    os.unlink(temp_path)
-            return {
-                "text": "",
-                "language": "en",
-                "source_language": language if language != "auto" else "en",
-                "segments": [],
-                "duration": duration
-            }
-        
-        # Normalize audio volume - critical for browser recordings which are often very quiet
-        # This fixes hallucinations caused by low volume audio (~-70 dB)
-        print("Checking audio volume for normalization...")
-        normalized_path = cls.normalize_audio(transcribe_path)
-        if normalized_path:
-            temp_files.append(normalized_path)
-            transcribe_path = normalized_path
-            print("Audio normalized successfully")
-        
-        # Optionally trim silence from audio
-        if trim_silence:
-            print("Trimming silence from audio...")
-            trimmed_path = cls.trim_silence(transcribe_path)
-            if trimmed_path != transcribe_path:
-                temp_files.append(trimmed_path)
-                transcribe_path = trimmed_path
-                print("Silence trimmed successfully")
-        
-        try:
-            # Prepare transcription options
-            # Always translate to English
-            options = {
-                "verbose": False,
-                "task": "translate",  # Translate all audio to English
-                "condition_on_previous_text": False,  # Reduces hallucination
-                "no_speech_threshold": 0.6,  # Higher threshold to filter silence
-                "compression_ratio_threshold": 2.4,  # Filter out repetitive/hallucinated text
-            }
-            
-            # Detect or set source language (restricted to English/Hebrew only)
-            if language and language != "auto":
-                # User specified language explicitly
-                source_language = language
-            else:
-                # Auto-detect, but restrict to English or Hebrew only
-                source_language = cls.detect_language_restricted(transcribe_path)
-            
-            options["language"] = source_language
-            
-            # Perform transcription (with translation to English)
-            # Use lock to prevent concurrent access to model (causes kv_cache corruption)
-            try:
-                with cls._model_lock:
-                    result = model.transcribe(transcribe_path, **options)
-            except RuntimeError as e:
-                if "cannot reshape tensor of 0 elements" in str(e):
-                    print(f"Whisper processing failed: audio likely too short or empty. Error: {e}")
-                    return {
-                        "text": "",
-                        "language": "en",
-                        "source_language": source_language,
-                        "segments": [],
-                        "duration": 0,
-                        "is_hallucination": False
-                    }
-                raise e
-            
-            # Check for potential hallucination indicators
-            text = result["text"].strip()
-            
-            # Detect repetitive text (hallucination indicator)
-            is_hallucination = cls._is_likely_hallucination(text)
-            if is_hallucination:
-                print(f"Warning: Detected likely hallucination: '{text[:100]}...'")
-                # text = ""  # Don't delete text, just flag it
-            
-            return {
-                "text": text,
-                "language": "en",  # Output is always English
-                "source_language": source_language,  # Detected/specified source language (en or he)
-                "segments": result.get("segments", []),
-                "duration": result.get("segments", [{}])[-1].get("end", 0) if result.get("segments") else 0,
-                "is_hallucination": is_hallucination
-            }
-        finally:
-            # Clean up all temporary files
-            for temp_path in temp_files:
-                if temp_path and os.path.exists(temp_path):
-                    os.unlink(temp_path)
-    
-    @classmethod
-    def _is_likely_hallucination(cls, text: str) -> bool:
+    def _is_likely_hallucination(self, text: str) -> bool:
         """
         Detect if transcription text is likely a hallucination.
-        Common patterns: very short generic phrases, repetitive text, etc.
         """
         if not text:
             return False
@@ -493,8 +313,7 @@ class TranscriberService:
         
         return False
     
-    @classmethod
-    def get_audio_duration(cls, audio_path: str) -> float:
+    def get_audio_duration(self, audio_path: str) -> float:
         """Get the duration of an audio file in seconds."""
         try:
             import subprocess
@@ -508,60 +327,34 @@ class TranscriberService:
         except Exception:
             return 0.0
     
-    @classmethod
-    def get_supported_languages(cls) -> Dict[str, str]:
+    def get_supported_languages(self) -> Dict[str, str]:
         """Return supported languages."""
         return {
             "auto": "Auto-detect",
             "en": "English",
             "he": "Hebrew"
         }
-    
-    @classmethod
-    def transcribe_with_diarization(
-        cls, 
+
+    def transcribe(
+        self,
         audio_path: str, 
         language: str = "auto", 
         trim_silence: bool = False,
-        num_speakers: int = 2
-    ) -> Dict[str, Any]:
+        num_speakers: Optional[int] = None,
+        **kwargs
+    ) -> TranscriptionResult:
         """
-        Transcribe an audio file with speaker diarization.
-        
-        This method performs both transcription (using Whisper) and speaker
-        diarization (using pyannote-audio), then merges the results to 
-        produce a transcript with speaker labels.
-        
-        IMPORTANT: Unlike transcribe(), this method handles audio processing
-        internally to ensure both Whisper and pyannote use the same processed
-        audio file (WAV format with proper normalization).
-        
-        Args:
-            audio_path: Path to the audio file
-            language: Language code ('en', 'he') or 'auto' for detection
-            trim_silence: Whether to remove silence from audio before transcribing
-            num_speakers: Expected number of speakers for diarization
-            
-        Returns:
-            Dictionary with transcription results including:
-            - text: Plain transcript text
-            - language: Output language (always 'en')
-            - source_language: Detected source language
-            - segments: Whisper segments (without speaker labels)
-            - duration: Audio duration in seconds
-            - transcript_segments: Diarized transcript data with speaker labels
+        Transcribe an audio file, optionally with speaker diarization.
         """
-
-        model = cls.get_model()
+        model = self.get_model()
         temp_files = []  # Track all temporary files for cleanup
         transcribe_path = audio_path
         
         try:
             # Step 1: Convert WebM files to WAV for reliable processing
-            # Both Whisper and pyannote work better with WAV files
             if audio_path.lower().endswith('.webm'):
                 print("Converting WebM to WAV for reliable processing...")
-                wav_path = cls.convert_to_wav(audio_path)
+                wav_path = self.convert_to_wav(audio_path)
                 if wav_path:
                     temp_files.append(wav_path)
                     transcribe_path = wav_path
@@ -570,26 +363,21 @@ class TranscriberService:
                     print("WebM conversion failed, attempting to use original file")
             
             # Check audio duration - skip very short files
-            duration = cls.get_audio_duration(transcribe_path)
+            duration = self.get_audio_duration(transcribe_path)
             print(f"Audio duration: {duration:.2f} seconds")
             if duration < 0.5:
                 print(f"Audio too short ({duration:.2f}s), skipping transcription")
-                return {
-                    "text": "",
-                    "language": "en",
-                    "source_language": language if language != "auto" else "en",
-                    "segments": [],
-                    "duration": duration,
-                    "transcript_segments": {
-                        "segments": [],
-                        "speakers": [],
-                        "full_text": ""
-                    }
-                }
+                return TranscriptionResult(
+                    text="",
+                    language="en",
+                    source_language=language if language != "auto" else "en",
+                    segments=[],
+                    duration=duration
+                )
             
-            # Step 2: Normalize audio volume - critical for browser recordings
+            # Step 2: Normalize audio volume
             print("Checking audio volume for normalization...")
-            normalized_path = cls.normalize_audio(transcribe_path)
+            normalized_path = self.normalize_audio(transcribe_path)
             if normalized_path:
                 temp_files.append(normalized_path)
                 transcribe_path = normalized_path
@@ -598,34 +386,32 @@ class TranscriberService:
             # Step 3: Optionally trim silence
             if trim_silence:
                 print("Trimming silence from audio...")
-                trimmed_path = cls.trim_silence(transcribe_path)
+                trimmed_path = self.trim_silence(transcribe_path)
                 if trimmed_path != transcribe_path:
                     temp_files.append(trimmed_path)
                     transcribe_path = trimmed_path
                     print("Silence trimmed successfully")
             
-            # Step 4: Detect or set source language (restricted to English/Hebrew only)
+            # Step 4: Detect or set source language
             if language and language != "auto":
-                # User specified language explicitly
                 source_language = language
             else:
-                # Auto-detect, but restrict to English or Hebrew only
-                source_language = cls.detect_language_restricted(transcribe_path)
+                source_language = self.detect_language_restricted(transcribe_path)
             
             # Step 5: Transcribe with Whisper
             print(f"Transcribing audio with Whisper (using: {transcribe_path})...")
             options = {
                 "verbose": False,
                 "task": "translate",  # Translate all audio to English
-                "condition_on_previous_text": False,  # Reduces hallucination
-                "no_speech_threshold": 0.6,  # Higher threshold to filter silence
-                "compression_ratio_threshold": 2.4,  # Filter out repetitive/hallucinated text
-                "language": source_language,  # Restricted to en/he only
+                "condition_on_previous_text": False,
+                "no_speech_threshold": 0.6,
+                "compression_ratio_threshold": 2.4,
+                "language": source_language,
             }
             
             # Use lock to prevent concurrent access to model (causes kv_cache corruption)
             try:
-                with cls._model_lock:
+                with self.__class__._model_lock:
                     whisper_result = model.transcribe(transcribe_path, **options)
             except RuntimeError as e:
                 # Handle empty/short audio error gracefully
@@ -648,74 +434,53 @@ class TranscriberService:
             
             # Check for potential hallucination
             text = whisper_result["text"].strip()
-            is_hallucination = cls._is_likely_hallucination(text)
+            is_hallucination = self._is_likely_hallucination(text)
             if is_hallucination:
                 print(f"Warning: Detected likely hallucination: '{text[:100]}...'")
-                # text = ""  # Don't delete text, just flag it
             
-            result = {
-                "text": text,
-                "language": "en",  # Output is always English
-                "source_language": source_language,  # Detected/specified source language (en or he)
-                "segments": whisper_result.get("segments", []),
-                "duration": whisper_result.get("segments", [{}])[-1].get("end", 0) if whisper_result.get("segments") else 0,
-                "is_hallucination": is_hallucination
-            }
+            result = TranscriptionResult(
+                text=text,
+                language="en",
+                source_language=source_language,
+                segments=whisper_result.get("segments", []),
+                duration=whisper_result.get("segments", [{}])[-1].get("end", 0) if whisper_result.get("segments") else 0,
+                is_hallucination=is_hallucination
+            )
             
             # If transcription failed or produced empty text, skip diarization
-            if not result.get("text") or not result.get("segments"):
+            if not result.text or not result.segments:
                 print("No transcript text, skipping diarization")
-                result["transcript_segments"] = {
-                    "segments": [],
-                    "speakers": [],
-                    "full_text": ""
-                }
                 return result
             
-            # Step 6: Run diarization on the SAME processed audio file
-            print(f"Running speaker diarization with {num_speakers} speakers on: {transcribe_path}")
-            diarization_segments = diarizer_service.diarize(
-                transcribe_path,  # Use the same processed file!
-                num_speakers=num_speakers
-            )
-            
-            # Step 7: Merge Whisper segments with diarization results
-            transcript_segments = diarizer_service.merge_with_transcript(
-                result["segments"],
-                diarization_segments
-            )
-            
-            result["transcript_segments"] = transcript_segments
-            
-            if transcript_segments.get("full_text"):
-                print(f"Diarization complete: {len(transcript_segments['speakers'])} speakers detected")
-            
-            return result
-            
-        except ImportError as e:
-            print(f"Diarization not available: {e}")
-            # Fall back to regular transcription
-            result = cls.transcribe(audio_path, language, trim_silence)
-            result["transcript_segments"] = {
-                "segments": [],
-                "speakers": [],
-                "full_text": ""
-            }
-            return result
-        except Exception as e:
-            print(f"Transcription with diarization failed: {e}")
+            # Step 6: Run diarization if requested
+            if num_speakers and num_speakers > 0:
+                print(f"Running speaker diarization with {num_speakers} speakers on: {transcribe_path}")
+                try:
+                    diarization_segments = diarizer_service.diarize(
+                        transcribe_path,  # Use the same processed file!
+                        num_speakers=num_speakers
+                    )
 
-            traceback.print_exc()
-            # Fall back to regular transcription
-            result = cls.transcribe(audio_path, language, trim_silence)
-            result["transcript_segments"] = {
-                "segments": [],
-                "speakers": [],
-                "full_text": ""
-            }
+                    # Step 7: Merge Whisper segments with diarization results
+                    transcript_segments = diarizer_service.merge_with_transcript(
+                        result.segments,
+                        diarization_segments
+                    )
+
+                    result.transcript_segments = transcript_segments
+
+                    if transcript_segments.get("full_text"):
+                        print(f"Diarization complete: {len(transcript_segments['speakers'])} speakers detected")
+                except ImportError as e:
+                    print(f"Diarization not available: {e}")
+                except Exception as e:
+                    print(f"Diarization failed: {e}")
+                    traceback.print_exc()
+            
             return result
+            
         finally:
-            # Clean up all temporary files AFTER both Whisper and pyannote are done
+            # Clean up all temporary files
             for temp_path in temp_files:
                 if temp_path and os.path.exists(temp_path):
                     try:
@@ -724,5 +489,22 @@ class TranscriberService:
                     except Exception as e:
                         print(f"Warning: Failed to clean up {temp_path}: {e}")
 
+    # Backward compatibility wrapper for transcribe_with_diarization
+    def transcribe_with_diarization(
+        self,
+        audio_path: str,
+        language: str = "auto",
+        trim_silence: bool = False,
+        num_speakers: int = 2
+    ) -> Dict[str, Any]:
+        """Deprecated: Use transcribe with num_speakers instead."""
+        result = self.transcribe(
+            audio_path=audio_path,
+            language=language,
+            trim_silence=trim_silence,
+            num_speakers=num_speakers
+        )
+        return result.model_dump()
 
-transcriber_service = TranscriberService()
+# Singleton instance
+transcriber_service = WhisperTranscriptionProvider()
