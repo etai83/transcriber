@@ -123,6 +123,8 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
         }
     }
 
+
+
     // Filter recordings based on search query
     const filteredRecordings = recordings.filter(recording => {
         if (!recording) return false
@@ -136,46 +138,7 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
         return title.includes(query) || description.includes(query) || date.includes(query)
     })
 
-    const formatDate = (dateString) => {
-        if (!dateString) return ''
-        try {
-            const date = new Date(dateString)
-            if (isNaN(date.getTime())) return ''
 
-            const now = new Date()
-            const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24))
-
-            if (diffDays === 0) return 'Today'
-            if (diffDays === 1) return 'Yesterday'
-
-            return date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-            })
-        } catch (err) {
-            console.error('Date formatting error:', err)
-            return ''
-        }
-    }
-
-    const formatTime = (dateString) => {
-        if (!dateString) return ''
-        try {
-            const date = new Date(dateString)
-            if (isNaN(date.getTime())) return ''
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-        } catch (err) {
-            return ''
-        }
-    }
-
-    const formatFileSize = (bytes) => {
-        if (typeof bytes !== 'number' || isNaN(bytes)) return ''
-        if (bytes < 1024) return bytes + ' B'
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-    }
 
     const handleRecordingComplete = () => {
         fetchRecordings()
@@ -617,6 +580,48 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
             />
         </>
     )
+}
+
+// Helper functions
+const formatDate = (dateString) => {
+    if (!dateString) return ''
+    try {
+        const date = new Date(dateString)
+        if (isNaN(date.getTime())) return ''
+
+        const now = new Date()
+        const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24))
+
+        if (diffDays === 0) return 'Today'
+        if (diffDays === 1) return 'Yesterday'
+
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        })
+    } catch (err) {
+        console.error('Date formatting error:', err)
+        return ''
+    }
+}
+
+const formatTime = (dateString) => {
+    if (!dateString) return ''
+    try {
+        const date = new Date(dateString)
+        if (isNaN(date.getTime())) return ''
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    } catch (err) {
+        return ''
+    }
+}
+
+const formatFileSize = (bytes) => {
+    if (typeof bytes !== 'number' || isNaN(bytes)) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
 export default Dashboard
