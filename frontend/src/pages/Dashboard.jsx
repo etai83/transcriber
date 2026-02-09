@@ -519,101 +519,106 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                     )}
 
                     {/* Recordings List */}
-                    {!loading && !error && filteredRecordings.map((recording) => (
-                        <div
-                            key={`${recording.type}-${recording.id}`}
-                            onClick={(e) => {
-                                // Don't navigate if clicking on a button or inside a button/input
-                                if (e.target.closest('button') || e.target.closest('input')) {
-                                    return
-                                }
-                                navigate(recording.type === 'conversation' ? `/conversation/${recording.id}` : `/transcription/${recording.id}`)
-                            }}
-                            className="group bg-surface-light dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 hover:border-primary/30 dark:hover:border-primary/50 transition-all cursor-pointer"
-                        >
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex-1">
-                                    {renamingId === recording.id ? (
-                                        <div className="flex items-center gap-2" onClick={e => e.preventDefault()}>
-                                            <input
-                                                type="text"
-                                                value={renameValue}
-                                                onChange={(e) => setRenameValue(e.target.value)}
-                                                className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-primary focus:outline-none w-full"
-                                                autoFocus
-                                                onClick={e => e.stopPropagation()}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') handleRenameSave(e)
-                                                    if (e.key === 'Escape') handleRenameCancel(e)
-                                                }}
-                                            />
-                                            <button onClick={handleRenameSave} className="text-green-500 hover:text-green-400 p-1">
-                                                <span className="material-symbols-outlined text-lg">check</span>
-                                            </button>
-                                            <button onClick={handleRenameCancel} className="text-red-500 hover:text-red-400 p-1">
-                                                <span className="material-symbols-outlined text-lg">close</span>
-                                            </button>
+                    {!loading && !error && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredRecordings.map((recording) => (
+                                <div
+                                    key={`${recording.type}-${recording.id}`}
+                                    onClick={(e) => {
+                                        // Don't navigate if clicking on a button or inside a button/input
+                                        if (e.target.closest('button') || e.target.closest('input')) {
+                                            return
+                                        }
+                                        navigate(recording.type === 'conversation' ? `/conversation/${recording.id}` : `/transcription/${recording.id}`)
+                                    }}
+                                    className="group bg-surface-light dark:bg-surface-dark rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-800 hover:border-primary/30 dark:hover:border-primary/50 transition-all cursor-pointer h-full flex flex-col"
+                                >
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex-1 min-w-0 mr-2">
+                                            {renamingId === recording.id ? (
+                                                <div className="flex items-center gap-2" onClick={e => e.preventDefault()}>
+                                                    <input
+                                                        type="text"
+                                                        value={renameValue}
+                                                        onChange={(e) => setRenameValue(e.target.value)}
+                                                        className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-primary focus:outline-none w-full"
+                                                        autoFocus
+                                                        onClick={e => e.stopPropagation()}
+                                                        onKeyDown={e => {
+                                                            if (e.key === 'Enter') handleRenameSave(e)
+                                                            if (e.key === 'Escape') handleRenameCancel(e)
+                                                        }}
+                                                    />
+                                                    <button onClick={handleRenameSave} className="text-green-500 hover:text-green-400 p-1">
+                                                        <span className="material-symbols-outlined text-lg">check</span>
+                                                    </button>
+                                                    <button onClick={handleRenameCancel} className="text-red-500 hover:text-red-400 p-1">
+                                                        <span className="material-symbols-outlined text-lg">close</span>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <h3
+                                                    className="text-base font-bold text-gray-900 dark:text-white mb-1 line-clamp-1 group-hover:text-primary transition-colors truncate"
+                                                    dir={String(recording.title || '').match(/[\u0590-\u05FF]/) ? 'rtl' : 'ltr'}
+                                                    title={recording.title || 'Untitled Recording'}
+                                                >
+                                                    {recording.title || 'Untitled Recording'}
+                                                </h3>
+                                            )}
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                <span>{formatDate(recording.created_at)}</span>
+                                                <span className="w-1 h-1 rounded-full bg-gray-400"></span>
+                                                <span>{formatTime(recording.created_at)}</span>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <h3
-                                            className="text-base font-bold text-gray-900 dark:text-white mb-1 line-clamp-1 group-hover:text-primary transition-colors"
-                                            dir={String(recording.title || '').match(/[\u0590-\u05FF]/) ? 'rtl' : 'ltr'}
-                                        >
-                                            {recording.title || 'Untitled Recording'}
-                                        </h3>
-                                    )}
-                                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                        <span>{formatDate(recording.created_at)}</span>
-                                        <span className="w-1 h-1 rounded-full bg-gray-400"></span>
-                                        <span>{formatTime(recording.created_at)}</span>
+                                        <div className="relative shrink-0">
+                                            <button
+                                                onClick={(e) => handleMenuClick(e, recording.id)}
+                                                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                                            </button>
+
+                                            {menuOpenId === recording.id && (
+                                                <div className="menu-dropdown absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 overflow-hidden" onClick={e => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={(e) => handleRenameStart(e, recording)}
+                                                        className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-base">edit</span>
+                                                        Rename
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleDelete(e, recording)}
+                                                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-base">delete</span>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="relative">
-                                    <button
-                                        onClick={(e) => handleMenuClick(e, recording.id)}
-                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                                    >
-                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                    </button>
 
-                                    {menuOpenId === recording.id && (
-                                        <div className="menu-dropdown absolute right-0 top-full mt-1 w-36 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-10 overflow-hidden" onClick={e => e.stopPropagation()}>
-                                            <button
-                                                onClick={(e) => handleRenameStart(e, recording)}
-                                                className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
-                                            >
-                                                <span className="material-symbols-outlined text-base">edit</span>
-                                                Rename
-                                            </button>
-                                            <button
-                                                onClick={(e) => handleDelete(e, recording)}
-                                                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 flex items-center gap-2"
-                                            >
-                                                <span className="material-symbols-outlined text-base">delete</span>
-                                                Delete
-                                            </button>
+                                    <div className="mt-auto pt-2 flex items-center justify-between">
+                                        {getStatusBadge(recording.status)}
+                                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                                            {formatDuration(recording.total_duration)}
+                                        </span>
+                                    </div>
+
+                                    {/* Transcript preview for completed items */}
+                                    {recording.status === 'completed' && recording.transcript_text && (
+                                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 italic leading-relaxed">
+                                                "{recording.transcript_text.substring(0, 150)}..."
+                                            </p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-
-                            <div className="flex items-center justify-between mt-3">
-                                {getStatusBadge(recording.status)}
-                                <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                                    {formatDuration(recording.total_duration)}
-                                </span>
-                            </div>
-
-                            {/* Transcript preview for completed items */}
-                            {recording.status === 'completed' && recording.transcript_text && (
-                                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 italic leading-relaxed">
-                                        "{recording.transcript_text.substring(0, 150)}..."
-                                    </p>
-                                </div>
-                            )}
+                            ))}
                         </div>
-                    ))}
+                    )}
                 </div>
             </main>
 

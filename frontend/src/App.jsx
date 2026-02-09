@@ -15,8 +15,8 @@ function App() {
   const showBottomNav = ['/', '/files', '/settings'].includes(location.pathname)
 
   return (
-    <div className="min-h-screen w-full flex justify-center overflow-x-hidden bg-background-light dark:bg-background-dark">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col relative shadow-2xl overflow-hidden">
+    <div className="min-h-screen w-full bg-background-light dark:bg-background-dark">
+      <div className="w-full max-w-7xl mx-auto bg-background-light dark:bg-background-dark min-h-screen flex flex-col relative overflow-hidden">
         {/* Side Menu */}
         <SideMenu
           isOpen={sideMenuOpen}

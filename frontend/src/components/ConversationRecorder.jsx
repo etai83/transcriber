@@ -690,323 +690,365 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
     const processingChunks = chunks.filter(c => c.status === 'pending' || c.status === 'processing')
 
     return (
-      <div className="flex flex-col">
-        {/* Error Messages */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-400 text-sm w-full">
-            {error}
-          </div>
-        )}
+      <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
+        {/* LEFT MAIN PANEL: Controls & Transcript */}
+        <div className="flex-1 w-full flex flex-col gap-4 min-w-0">
 
-        {permissionDenied && (
-          <div className="mb-4 p-4 bg-amber-900/20 border border-amber-500/20 rounded-xl w-full">
-            <p className="text-amber-400 text-sm font-medium">To enable microphone access:</p>
-            <ul className="text-amber-400/80 text-sm mt-2 list-disc list-inside">
-              <li>Click the lock icon in your browser's address bar</li>
-              <li>Allow microphone permissions</li>
-              <li>Refresh the page</li>
-            </ul>
-          </div>
-        )}
-
-        {/* Recording Controls - Compact Row */}
-        <div className="flex items-center justify-between gap-4 py-4">
-          {/* Visualizer + Timer */}
-          <div className="flex items-center gap-3">
-            <div className={`size-12 rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
-              ? isPaused
-                ? 'bg-amber-500/20'
-                : 'bg-red-500/20 animate-pulse'
-              : 'bg-slate-800'
-              }`}>
-              {isRecording ? (
-                <div className="flex items-center space-x-0.5">
-                  {[...Array(4)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-red-500 rounded-full transition-all duration-75"
-                      style={{
-                        height: isPaused ? '10px' : `${Math.max(4, (audioLevel / 100) * 18 + Math.random() * 4)}px`,
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <span className="material-symbols-outlined text-2xl text-slate-400">mic</span>
-              )}
+          {/* Error Messages */}
+          {error && (
+            <div className="mb-2 p-3 bg-red-900/30 border border-red-500/30 rounded-xl text-red-400 text-sm w-full flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              {error}
             </div>
+          )}
 
-            <div className="flex flex-col">
-              <div className={`text-xl font-mono ${isRecording ? 'text-red-500' : 'text-slate-500'}`}>
-                {formatTime(recordingTime)}
-              </div>
-              {isRecording && (
-                <div className="text-[10px] text-slate-500">
-                  Chunk {chunkIndex + 1} • {formatTime(chunkTime)}/{formatTime(chunkInterval)}
-                </div>
-              )}
+          {permissionDenied && (
+            <div className="mb-2 p-4 bg-amber-900/20 border border-amber-500/20 rounded-xl w-full">
+              <p className="text-amber-400 text-sm font-medium flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg">lock</span>
+                To enable microphone access:
+              </p>
+              <ul className="text-amber-400/80 text-sm mt-2 list-disc list-inside ml-1">
+                <li>Click the lock icon in your browser's address bar</li>
+                <li>Allow microphone permissions</li>
+                <li>Refresh the page</li>
+              </ul>
             </div>
-          </div>
+          )}
 
-          {/* Control Buttons */}
-          <div className="flex items-center gap-2">
-            {!isRecording ? (
-              conversationId ? (
-                <>
-                  <button
-                    onClick={viewConversation}
-                    className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    View
-                  </button>
-                  <button
-                    onClick={startNewRecording}
-                    className="px-4 py-2 border border-slate-600 text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-800 transition-colors"
-                  >
-                    New
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={startRecording}
-                  className="size-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-red-500/30"
-                  title="Start Recording"
-                >
-                  <span className="material-symbols-outlined text-xl">mic</span>
-                </button>
-              )
-            ) : (
+          {/* Control Panel (Visualizer, Timer, Buttons) */}
+          <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-700/50 shadow-sm relative overflow-hidden backdrop-blur-sm">
+            {/* Background Glows */}
+            {isRecording && !isPaused && (
               <>
-                <button
-                  onClick={pauseRecording}
-                  className={`size-9 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
-                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                    : 'bg-amber-500 hover:bg-amber-600 text-white'
-                    }`}
-                  title={isPaused ? 'Resume' : 'Pause'}
-                >
-                  <span className="material-symbols-outlined text-lg">
-                    {isPaused ? 'play_arrow' : 'pause'}
-                  </span>
-                </button>
-
-                <button
-                  onClick={stopRecording}
-                  className="size-12 bg-slate-700 hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
-                  title="Stop Recording"
-                >
-                  <span className="material-symbols-outlined text-xl">stop</span>
-                </button>
+                <div className="absolute top-0 left-1/4 w-32 h-32 bg-primary/20 rounded-full blur-[64px] pointer-events-none"></div>
+                <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-[64px] pointer-events-none"></div>
               </>
             )}
-          </div>
-        </div>
 
-        {/* Chunk Progress Bar */}
-        {isRecording && (
-          <div className="w-full bg-slate-700 rounded-full h-1 mb-4">
-            <div
-              className="bg-primary h-1 rounded-full transition-all duration-1000"
-              style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
-            />
-          </div>
-        )}
-
-        {/* AI Assistant Panel */}
-        {isRecording && (
-          <div className="mb-4 animate-slide-up">
-            <AIAssistant
-              suggestions={aiSuggestions}
-              isLoading={aiLoading}
-              error={aiError}
-              onDismiss={() => setAiSuggestions([])}
-              className="shadow-none border-t border-white/5 rounded-none bg-transparent"
-            />
-          </div>
-        )}
-
-        {/* Auto-generated Metadata Display */}
-        {!isRecording && conversationId && (conversationTitle || conversationDescription || metadataGenerating) && (
-          <div className="mb-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50 animate-slide-up">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary text-xl mt-0.5">
-                {metadataGenerating ? 'pending' : 'auto_awesome'}
-              </span>
-              <div className="flex-1">
-                {metadataGenerating ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                      <span className="text-sm text-slate-400">AI is generating title and description...</span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-slate-700/50 rounded animate-pulse w-3/4"></div>
-                      <div className="h-3 bg-slate-700/50 rounded animate-pulse w-full"></div>
-                      <div className="h-3 bg-slate-700/50 rounded animate-pulse w-5/6"></div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {conversationTitle && (
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Auto-generated Title</div>
-                        <h3 className="text-base font-semibold text-white">{conversationTitle}</h3>
-                      </div>
-                    )}
-                    {conversationDescription && (
-                      <div>
-                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Description</div>
-                        <p className="text-sm text-slate-300 leading-relaxed">{conversationDescription}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Live Transcript Display */}
-        {(isRecording || chunks.length > 0) && (
-          <div className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden mb-4">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/50">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-sm">subtitles</span>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Transcript</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {processingChunks.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                    <span className="text-[10px] text-amber-500 font-medium">Processing {processingChunks.length}</span>
-                  </div>
-                )}
-                {uploadQueue.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                    <span className="text-[10px] text-blue-400 font-medium">Queued {uploadQueue.length}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto p-3 space-y-3">
-              {completedChunks.length === 0 && processingChunks.length === 0 && !isRecording && (
-                <p className="text-slate-500 text-sm text-center py-4">No transcripts yet</p>
-              )}
-
-              {completedChunks.length === 0 && (isRecording || processingChunks.length > 0) && (
-                <p className="text-slate-500 text-sm text-center py-4">
-                  {isRecording ? 'Waiting for first chunk to complete...' : 'Processing transcription...'}
-                </p>
-              )}
-
-              {completedChunks.map((chunk, idx) => {
-                // Detect if Hebrew (RTL)
-                const isHebrew = chunk.transcript_text?.match(/[\u0590-\u05FF]/)
-                // Alternate speaker colors
-                const speakerClass = idx % 2 === 0 ? 'border-l-2 border-blue-500 pl-3' : 'border-l-2 border-purple-500 pl-3'
-
-                return (
-                  <div
-                    key={chunk.id}
-                    className={`${isHebrew ? 'text-right border-r-2 border-l-0 pr-3 pl-0 border-emerald-500' : speakerClass}`}
-                    dir={isHebrew ? 'rtl' : 'ltr'}
-                  >
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[10px] text-slate-500 font-mono">Chunk {chunk.chunk_index + 1}</span>
-                    </div>
-                    <p className="text-sm text-slate-200 leading-relaxed">{chunk.transcript_text}</p>
-                  </div>
-                )
-              })}
-
-            </div>
-
-            {/* Processing indicators */}
-            {processingChunks.map((chunk) => (
-              <div key={chunk.id} className="flex items-center gap-2 text-slate-500 py-2">
-                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                <span className="text-xs">Processing chunk {chunk.chunk_index + 1}...</span>
-              </div>
-            ))}
-
-            {/* Queued indicators */}
-            {uploadQueue.map((item) => (
-              <div key={`queued-${item.index}`} className="flex items-center gap-2 text-slate-500 py-2 opacity-60">
-                <span className="material-symbols-outlined text-sm">hourglass_empty</span>
-                <span className="text-xs">Chunk {item.index + 1} (Queued)...</span>
-              </div>
-            ))}
-
-            {/* All AI Suggestions History */}
-            {allSuggestions.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-700/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="material-symbols-outlined text-violet-400 text-sm">psychology</span>
-                  <span className="text-[11px] font-bold text-violet-400 uppercase tracking-wider">
-                    AI Suggestions ({allSuggestions.length})
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+              {/* Visualizer & Timer */}
+              <div className="flex items-center gap-4">
+                <div className={`relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isRecording
+                  ? isPaused ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'
+                  : 'bg-slate-800 text-slate-400'
+                  }`}>
+                  {isRecording && !isPaused && (
+                    <div className="absolute inset-0 rounded-xl border border-red-500/20 animate-ping"></div>
+                  )}
+                  <span className="material-symbols-outlined text-2xl">
+                    {isRecording ? 'mic' : 'mic_none'}
                   </span>
                 </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {allSuggestions.map((item, groupIdx) => (
-                    <div key={groupIdx} className="bg-violet-900/20 rounded-lg p-2 border border-violet-500/20">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-medium text-violet-400">
-                          Chunk {item.chunkIndex + 1}
-                        </span>
-                        {item.model && (
-                          <span className="text-[9px] text-violet-400/60 font-mono">
-                            {item.provider}/{item.model}
-                          </span>
-                        )}
-                      </div>
-                      {item.suggestions.map((suggestion, idx) => (
-                        <div key={idx} className="flex items-start gap-1.5 mt-1">
-                          <span className="material-symbols-outlined text-violet-400 text-xs mt-0.5">
-                            {suggestion.type === 'clarification' ? 'help' :
-                              suggestion.type === 'follow_up' ? 'chat' : 'sticky_note_2'}
-                          </span>
-                          <div className="flex-1">
-                            <span className="text-[11px] font-medium text-violet-300">{suggestion.title}: </span>
-                            <span className="text-[11px] text-slate-400">{suggestion.message}</span>
-                          </div>
-                        </div>
-                      ))}
+
+                <div>
+                  <div className={`text-xl font-mono font-bold tracking-tight ${isRecording ? 'text-white' : 'text-slate-500'}`}>
+                    {formatTime(recordingTime)}
+                  </div>
+                  {isRecording && (
+                    <div className="text-[10px] text-slate-400 font-medium flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                      Chunk {chunkIndex + 1} • {formatTime(chunkTime)}/{formatTime(chunkInterval)}
                     </div>
-                  ))}
+                  )}
                 </div>
+              </div>
+
+              {/* Control Buttons */}
+              <div className="flex items-center gap-2">
+                {!isRecording ? (
+                  conversationId ? (
+                    <>
+                      <button
+                        onClick={viewConversation}
+                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-base">visibility</span>
+                        View
+                      </button>
+                      <button
+                        onClick={startNewRecording}
+                        className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors border border-slate-700 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        New
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={startRecording}
+                      className="group relative flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all shadow-lg shadow-red-500/30 overflow-hidden"
+                      title="Start Recording"
+                    >
+                      <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                      <span className="material-symbols-outlined text-xl">mic</span>
+                      <span className="text-sm font-bold">Start Recording</span>
+                    </button>
+                  )
+                ) : (
+                  <>
+                    <button
+                      onClick={pauseRecording}
+                      className={`p-2.5 rounded-xl flex items-center justify-center transition-colors shadow-lg ${isPaused
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/20'
+                        : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20'
+                        }`}
+                      title={isPaused ? 'Resume' : 'Pause'}
+                    >
+                      <span className="material-symbols-outlined text-xl fill-current">
+                        {isPaused ? 'play_arrow' : 'pause'}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={stopRecording}
+                      className="p-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl flex items-center justify-center transition-colors shadow-lg border border-slate-600"
+                      title="Stop Recording"
+                    >
+                      <span className="material-symbols-outlined text-xl fill-current">stop</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Chunk Progress Bar inside control panel */}
+            {isRecording && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800">
+                <div
+                  className="bg-primary h-full transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+                  style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
+                />
               </div>
             )}
           </div>
-        )
-        }
 
-        {/* Privacy Indicator */}
-        <div className="flex items-center justify-center gap-2 py-2">
-          <span className="material-symbols-outlined text-slate-400 text-sm">shield_lock</span>
-          <p className="text-slate-400 text-xs font-medium">Secure Local Processing (Device Only)</p>
+          {/* AI Assistant suggestions moved to right panel */}
+
+          {/* Auto-generated Metadata Display */}
+          {!isRecording && conversationId && (conversationTitle || conversationDescription || metadataGenerating) && (
+            <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-700/50 animate-slide-up relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 blur-[40px] rounded-full pointer-events-none"></div>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className={`p-2 rounded-lg ${metadataGenerating ? 'bg-primary/10 text-primary' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                  <span className="material-symbols-outlined text-xl">
+                    {metadataGenerating ? 'auto_awesome' : 'check_circle'}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  {metadataGenerating ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-200">Analyzing conversation...</span>
+                        <span className="flex gap-1">
+                          <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                          <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                          <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></span>
+                        </span>
+                      </div>
+                      <div className="space-y-2 opacity-50">
+                        <div className="h-3 bg-slate-700 rounded w-3/4"></div>
+                        <div className="h-2 bg-slate-700 rounded w-full"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {conversationTitle && (
+                        <h3 className="text-base font-bold text-white leading-tight">{conversationTitle}</h3>
+                      )}
+                      {conversationDescription && (
+                        <p className="text-sm text-slate-400 leading-relaxed">{conversationDescription}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Live Transcript Display (Full Width) */}
+          {(isRecording || chunks.length > 0) && (
+            <div className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden flex flex-col min-h-[400px] shadow-sm flex-1">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 bg-slate-800/30">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">subtitles</span>
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">Live Transcript</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {processingChunks.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 rounded-md border border-amber-500/10">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                      <span className="text-[10px] text-amber-500 font-bold">Processing</span>
+                    </div>
+                  )}
+                  {uploadQueue.length > 0 && (
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {uploadQueue.length} queued
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 max-h-[600px] overflow-y-auto p-4 space-y-4 scroll-smooth">
+                {completedChunks.length === 0 && processingChunks.length === 0 && !isRecording && (
+                  <div className="flex flex-col items-center justify-center py-10 opacity-50">
+                    <span className="material-symbols-outlined text-4xl text-slate-600 mb-2">text_fields</span>
+                    <p className="text-slate-500 text-sm">Transcript will appear here</p>
+                  </div>
+                )}
+
+                {completedChunks.length === 0 && (isRecording || processingChunks.length > 0) && (
+                  <div className="flex items-center justify-center gap-3 py-8 text-slate-400">
+                    <span className="material-symbols-outlined animate-spin text-xl">sync</span>
+                    <span className="text-sm">Listening and transcribing...</span>
+                  </div>
+                )}
+
+                {completedChunks.map((chunk, idx) => {
+                  const isHebrew = chunk.transcript_text?.match(/[\u0590-\u05FF]/)
+                  const isSpeakerA = idx % 2 === 0
+
+                  return (
+                    <div
+                      key={chunk.id}
+                      className={`relative group ${isHebrew ? 'text-right' : 'text-left'}`}
+                      dir={isHebrew ? 'rtl' : 'ltr'}
+                    >
+                      <div className={`absolute top-0 bottom-0 w-1 rounded-full ${isHebrew ? 'right-0' : 'left-0'} ${isSpeakerA ? 'bg-blue-500' : 'bg-purple-500'}`}></div>
+                      <div className={`${isHebrew ? 'mr-4' : 'ml-4'}`}>
+                        <div className="flex items-center gap-2 mb-1 px-1">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${isSpeakerA ? 'text-blue-400' : 'text-purple-400'}`}>
+                            {isSpeakerA ? 'Speaker 1' : 'Speaker 2'}
+                          </span>
+                          <span className="text-[10px] text-slate-600 font-mono">#{chunk.chunk_index + 1}</span>
+                        </div>
+                        <p className="text-[15px] text-slate-200 leading-relaxed font-body">{chunk.transcript_text}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {processingChunks.map((chunk) => (
+                  <div key={chunk.id} className="flex items-center gap-3 py-2 pl-4 border-l-2 border-slate-700 opacity-50">
+                    <span className="material-symbols-outlined text-sm animate-spin text-slate-400">progress_activity</span>
+                    <span className="text-xs text-slate-400 italic">Processing chunk {chunk.chunk_index + 1}...</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Privacy Indicator */}
+          <div className="flex items-center justify-center gap-2 py-1 opacity-50 hover:opacity-100 transition-opacity">
+            <span className="material-symbols-outlined text-slate-400 text-xs">shield_lock</span>
+            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wider">Secure Local Processing (Device Only)</p>
+          </div>
         </div>
-      </div >
+
+        {/* RIGHT SIDEBAR PANEL: AI Suggestions History */}
+        <div className={`w-full lg:w-80 shrink-0 flex flex-col transition-all duration-500 ${isRecording || chunks.length > 0 || allSuggestions.length > 0 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 hidden lg:flex'}`}>
+          {(isRecording || chunks.length > 0 || allSuggestions.length > 0) && (
+            <div className="sticky top-4 flex flex-col gap-4">
+              <div className="bg-slate-900/50 rounded-2xl border border-slate-700/50 overflow-hidden flex flex-col shadow-sm max-h-[calc(100vh-120px)] backdrop-blur-sm">
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-md sticky top-0 z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-violet-500/10 rounded-lg">
+                        <span className="material-symbols-outlined text-violet-400 text-sm">psychology</span>
+                      </div>
+                      <span className="text-xs font-bold text-violet-300 uppercase tracking-wide">
+                        AI Insights
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                      {allSuggestions.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="overflow-y-auto p-3 space-y-3 flex-1 min-h-[200px] scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                  {allSuggestions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-40 text-center text-slate-500 px-4">
+                      <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
+                        <span className="material-symbols-outlined text-2xl opacity-50">lightbulb</span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-400">Listening for insights...</p>
+                      <p className="text-[10px] text-slate-600 mt-1 max-w-[200px]">AI will analyze the conversation and provide suggestions here.</p>
+                    </div>
+                  ) : (
+                    allSuggestions.map((item, groupIdx) => (
+                      <div key={groupIdx} className="bg-white/5 rounded-xl p-3 border border-white/5 hover:border-violet-500/30 transition-colors animate-slide-up group">
+                        <div className="flex items-center justify-between mb-2 pb-2 border-b border-white/5">
+                          <span className="text-[10px] font-bold text-violet-300 bg-violet-500/10 px-2 py-0.5 rounded-full">
+                            Chunk {item.chunkIndex + 1}
+                          </span>
+                          {item.model && (
+                            <span className="text-[9px] text-slate-500 font-mono">
+                              {item.model.split('/').pop()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="space-y-2.5">
+                          {item.suggestions.map((suggestion, idx) => (
+                            <div key={idx} className="flex gap-2.5">
+                              <div className="shrink-0 mt-0.5 bg-slate-800 rounded-md w-6 h-6 flex items-center justify-center">
+                                <span className="text-xs">
+                                  {suggestion.type === 'clarification' ? '🤔' :
+                                    suggestion.type === 'follow_up' ? '💬' : '💡'}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-bold text-slate-200 leading-tight mb-0.5 group-hover:text-primary transition-colors">{suggestion.title}</p>
+                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">{suggestion.message}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Tip Card */}
+              <div className="bg-gradient-to-br from-violet-600/20 to-indigo-600/20 rounded-xl p-4 border border-violet-500/20 flex gap-3 items-start">
+                <span className="material-symbols-outlined text-violet-400 text-lg mt-0.5">auto_awesome</span>
+                <div>
+                  <p className="text-xs font-bold text-violet-300 mb-0.5">Pro Tip</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Pause the recording to let the AI process the context more deeply without new audio interruption.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     )
   }
 
   // Full version for standalone use
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col lg:flex-row gap-4 h-full">
       {/* Main Recording Panel */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 flex flex-col min-h-0 bg-surface-light dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
         {/* Error Messages */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-md text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+            <span className="material-symbols-outlined text-lg">error</span>
             {error}
           </div>
         )}
 
         {permissionDenied && (
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <p className="text-yellow-800 text-sm font-medium">To enable microphone access:</p>
-            <ul className="text-yellow-700 text-sm mt-2 list-disc list-inside">
+          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-500/30 rounded-md">
+            <p className="text-yellow-800 dark:text-yellow-400 text-sm font-medium flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">lock</span>
+              To enable microphone access:
+            </p>
+            <ul className="text-yellow-700 dark:text-yellow-300 text-sm mt-2 list-disc list-inside ml-1 space-y-1">
               <li>Click the lock icon in your browser's address bar</li>
               <li>Allow microphone permissions</li>
               <li>Refresh the page</li>
@@ -1015,137 +1057,127 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         )}
 
         {/* Recording Controls */}
-        <div className="text-center py-8">
+        <div className="text-center py-8 flex-1 flex flex-col justify-center">
           {/* Recording Visualizer */}
-          <div className="mb-6">
-            <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all duration-300 ${isRecording
+          <div className="mb-8">
+            <div className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center transition-all duration-300 relative ${isRecording
               ? isPaused
-                ? 'bg-yellow-100'
-                : 'bg-red-100 animate-pulse'
-              : 'bg-gray-100'
+                ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                : 'bg-red-100 dark:bg-red-900/20'
+              : 'bg-gray-100 dark:bg-gray-800'
               }`}>
+
+              {/* Ripple Effect when recording */}
+              {isRecording && !isPaused && (
+                <>
+                  <div className="absolute inset-0 rounded-full border border-red-500/30 animate-ping"></div>
+                  <div className="absolute -inset-4 rounded-full border border-red-500/10 animate-pulse"></div>
+                </>
+              )}
+
               {isRecording ? (
-                <div className="flex items-center space-x-1">
-                  {[...Array(5)].map((_, i) => (
+                <div className="flex items-center justify-center gap-1 h-12">
+                  {/* Audio Visualizer Bars */}
+                  {[...Array(7)].map((_, i) => (
                     <div
                       key={i}
-                      className={`w-1 bg-red-500 rounded-full transition-all duration-75`}
+                      className={`w-1.5 rounded-full transition-all duration-75 ${isPaused ? 'bg-yellow-500' : 'bg-red-500'}`}
                       style={{
-                        height: isPaused ? '16px' : `${Math.max(8, (audioLevel / 100) * 32 + Math.random() * 8)}px`,
+                        height: isPaused ? '8px' : `${Math.max(8, Math.min(48, (audioLevel / 100) * 48 * (1 + Math.random())))}px`,
                       }}
                     />
                   ))}
                 </div>
               ) : (
-                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
+                <span className="material-symbols-outlined text-5xl text-gray-400 dark:text-gray-600">mic</span>
               )}
             </div>
 
             {/* Audio Level Meter */}
             {isRecording && (
-              <div className="mt-4 max-w-xs mx-auto">
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <div className="mt-6 max-w-xs mx-auto">
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium tracking-wide uppercase">
                   <span>Mic Level</span>
-                  <span className={audioLevel < 10 ? 'text-red-500 font-medium' : audioLevel < 30 ? 'text-yellow-500' : 'text-green-500'}>
+                  <span className={audioLevel < 10 ? 'text-red-500' : audioLevel < 30 ? 'text-yellow-500' : 'text-green-500'}>
                     {audioLevel < 10 ? 'Too quiet!' : audioLevel < 30 ? 'Low' : 'Good'}
                   </span>
                 </div>
-                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-75 ${audioLevel < 10 ? 'bg-red-500' : audioLevel < 30 ? 'bg-yellow-500' : 'bg-green-500'
+                    className={`h-full transition-all duration-100 ${audioLevel < 10 ? 'bg-red-500' : audioLevel < 30 ? 'bg-yellow-500' : 'bg-green-500'
                       }`}
-                    style={{ width: `${audioLevel}%` }}
+                    style={{ width: `${Math.min(100, audioLevel * 1.5)}%` }}
                   />
                 </div>
-                {audioLevel < 10 && (
-                  <p className="text-xs text-red-500 mt-2">
-                    Check your microphone! The audio level is very low.
-                  </p>
-                )}
               </div>
             )}
           </div>
 
           {/* Timers */}
-          <div className="mb-6">
-            <div className={`text-4xl font-mono ${isRecording ? 'text-red-600' : 'text-gray-400'}`}>
+          <div className="mb-10">
+            <div className={`text-6xl font-mono font-medium tracking-tighter ${isRecording ? 'text-red-500 dark:text-red-400' : 'text-gray-300 dark:text-gray-600'}`}>
               {formatTime(recordingTime)}
             </div>
             {isRecording && (
-              <div className="text-sm text-gray-500 mt-2">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-3 font-medium bg-gray-100 dark:bg-gray-800/50 inline-block px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700">
                 Chunk {chunkIndex + 1}: {formatTime(chunkTime)} / {formatTime(chunkInterval)}
-                <div className="w-48 mx-auto mt-1 bg-gray-200 rounded-full h-1.5">
-                  <div
-                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000"
-                    style={{ width: `${(chunkTime / chunkInterval) * 100}%` }}
-                  />
-                </div>
               </div>
             )}
           </div>
 
           {/* Control Buttons */}
-          <div className="flex items-center justify-center space-x-4">
+          <div className="flex items-center justify-center gap-6">
             {!isRecording ? (
               conversationId ? (
                 // Post-recording buttons
-                <>
+                <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
                   <button
                     onClick={viewConversation}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="flex items-center justify-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl hover:bg-blue-600 transition-all shadow-lg hover:shadow-primary/30 active:scale-95 font-bold text-lg"
                   >
+                    <span className="material-symbols-outlined">visibility</span>
                     View Transcript
                   </button>
                   <button
                     onClick={startNewRecording}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-center gap-2 px-8 py-4 bg-surface-light dark:bg-surface-dark border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all font-bold text-lg hover:border-slate-300 dark:hover:border-slate-600"
                   >
+                    <span className="material-symbols-outlined">add</span>
                     New Recording
                   </button>
-                </>
+                </div>
               ) : (
                 // Start recording button
                 <button
                   onClick={startRecording}
-                  className="w-16 h-16 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                  className="group relative w-20 h-20 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all shadow-xl hover:shadow-red-500/40 hover:scale-105 active:scale-95"
                   title="Start Recording"
                 >
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="6" />
-                  </svg>
+                  <div className="absolute inset-0 rounded-full border-2 border-white/20"></div>
+                  <span className="material-symbols-outlined text-4xl fill-current group-hover:scale-110 transition-transform">mic</span>
                 </button>
               )
             ) : (
               <>
                 <button
                   onClick={pauseRecording}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow ${isPaused
-                    ? 'bg-green-500 hover:bg-green-600 text-white'
-                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                  className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-lg active:scale-95 ${isPaused
+                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-green-500/30'
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white shadow-yellow-500/30'
                     }`}
                   title={isPaused ? 'Resume' : 'Pause'}
                 >
-                  {isPaused ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                    </svg>
-                  )}
+                  <span className="material-symbols-outlined text-2xl fill-current">
+                    {isPaused ? 'play_arrow' : 'pause'}
+                  </span>
                 </button>
 
                 <button
                   onClick={stopRecording}
-                  className="w-16 h-16 bg-gray-700 hover:bg-gray-800 text-white rounded-full flex items-center justify-center transition-colors shadow-lg"
+                  className="w-20 h-20 bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white rounded-full flex items-center justify-center transition-all shadow-xl hover:shadow-slate-900/30 hover:scale-105 active:scale-95"
                   title="Stop Recording"
                 >
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="1" />
-                  </svg>
+                  <span className="material-symbols-outlined text-4xl fill-current">stop</span>
                 </button>
               </>
             )}
@@ -1153,248 +1185,176 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
 
           {/* Status Text */}
           {isRecording && (
-            <p className="mt-4 text-sm text-gray-500">
-              {isPaused ? 'Recording paused' : `Recording... Transcribing every ${chunkInterval}s`}
+            <p className="mt-6 text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">
+              {isPaused ? 'Recording paused' : `Processing audio chunks every ${chunkInterval}s...`}
             </p>
           )}
         </div>
 
         {/* Settings (only show before recording) */}
         {!isRecording && !conversationId && (
-          <div className="border-t pt-4 mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Microphone
-              </label>
-              <select
-                value={selectedMicId}
-                onChange={(e) => setSelectedMicId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {availableMics.length === 0 ? (
-                  <option value="">No microphones found</option>
-                ) : (
-                  availableMics.map((mic) => (
-                    <option key={mic.deviceId} value={mic.deviceId}>
-                      {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
-                    </option>
-                  ))
-                )}
-              </select>
-              {availableMics.length === 0 && (
-                <p className="text-xs text-red-500 mt-1">
-                  Please allow microphone access to see available devices
-                </p>
-              )}
-            </div>
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-6 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Microphone Input
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMicId}
+                    onChange={(e) => setSelectedMicId(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900 dark:text-white appearance-none"
+                  >
+                    {availableMics.length === 0 ? (
+                      <option value="">No microphones found</option>
+                    ) : (
+                      availableMics.map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId}>
+                          {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">mic</span>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[20px] pointer-events-none">expand_more</span>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Source Language
-              </label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="auto">Auto-detect</option>
-                <option value="en">English</option>
-                <option value="he">Hebrew</option>
-              </select>
-            </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Configuration
+                </label>
+                <div className="flex gap-3">
+                  <select
+                    value={chunkInterval}
+                    onChange={(e) => setChunkInterval(Number(e.target.value))}
+                    className="flex-1 px-3 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900 dark:text-white appearance-none"
+                  >
+                    <option value={15}>15s (Fast)</option>
+                    <option value={30}>30s (Balanced)</option>
+                    <option value={60}>60s (Efficient)</option>
+                  </select>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transcription Interval
-              </label>
-              <select
-                value={chunkInterval}
-                onChange={(e) => setChunkInterval(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={15}>15 seconds</option>
-                <option value={30}>30 seconds</option>
-                <option value={60}>1 minute</option>
-                <option value={120}>2 minutes</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Audio will be transcribed at this interval during recording
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Number of Speakers
-              </label>
-              <select
-                value={numSpeakers}
-                onChange={(e) => setNumSpeakers(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value={1}>1 speaker (monologue)</option>
-                <option value={2}>2 speakers</option>
-                <option value={3}>3 speakers</option>
-                <option value={4}>4 speakers</option>
-                <option value={5}>5 speakers</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Speaker diarization will identify who said what
-              </p>
-            </div>
-
-            <div>
-              <label className="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={trimSilence}
-                  onChange={(e) => setTrimSilence(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Trim silence
-                </span>
-              </label>
+                  <div className="flex items-center px-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={trimSilence}
+                        onChange={(e) => setTrimSilence(e.target.checked)}
+                        className="accent-primary w-4 h-4 rounded text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Trim Silence</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Side Panel - Live Transcriptions */}
+      {/* Side Panel - Live Transcriptions & AI */}
       {(isRecording || chunks.length > 0) && (
-        <div className="w-80 border-l bg-gray-50 p-4 max-h-[600px] overflow-y-auto">
-          {/* AI Assistant Panel */}
-          {isRecording && (
-            <div className="mb-4">
-              <AIAssistant
-                suggestions={aiSuggestions}
-                isLoading={aiLoading}
-                error={aiError}
-                onDismiss={() => setAiSuggestions([])}
-                className="shadow-sm border border-gray-200"
-              />
+        <div className="w-full lg:w-96 flex flex-col min-h-0 gap-4">
+          {/* AI Suggestions Panel */}
+          <div className="flex-1 bg-violet-50/50 dark:bg-violet-900/10 rounded-2xl border border-violet-200 dark:border-violet-500/20 overflow-hidden flex flex-col shadow-sm">
+            <div className="px-4 py-3 border-b border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-900/20 flex items-center gap-2">
+              <span className="material-symbols-outlined text-violet-500 dark:text-violet-400">psychology</span>
+              <h3 className="font-bold text-violet-700 dark:text-violet-300 text-sm uppercase tracking-wide">
+                AI Insights {allSuggestions.length > 0 && `(${allSuggestions.length})`}
+              </h3>
             </div>
-          )}
 
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Live Transcriptions
-          </h3>
-
-          {chunks.length === 0 ? (
-            <p className="text-sm text-gray-500 italic">
-              Transcriptions will appear here as chunks complete...
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {chunks
-                .sort((a, b) => (b.chunk_index ?? 0) - (a.chunk_index ?? 0))
-                .map((chunk, index) => (
-                  <div
-                    key={chunk.id || index}
-                    className="bg-white rounded-lg p-3 shadow-sm border"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-500">
-                        Part {(chunk.chunk_index ?? index) + 1}
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        {getStatusIcon(chunk.status)}
-                        <span className="text-xs text-gray-400">
-                          {chunk.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    {chunk.status === 'completed' && chunk.transcript_text ? (
-                      <p className="text-sm text-gray-700 line-clamp-4">
-                        {chunk.transcript_text}
-                      </p>
-                    ) : chunk.status === 'processing' ? (
-                      <p className="text-sm text-gray-400 italic">
-                        Transcribing...
-                      </p>
-                    ) : chunk.status === 'failed' ? (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-red-500 flex-1">
-                          {chunk.error_message || 'Transcription failed'}
-                        </p>
-                        <button
-                          onClick={() => handleRetryChunk(chunk.id)}
-                          disabled={retryingChunks[chunk.id]}
-                          className="ml-2 px-2 py-1 text-xs text-orange-600 hover:text-orange-800 border border-orange-400 rounded hover:bg-orange-50 disabled:opacity-50"
-                        >
-                          {retryingChunks[chunk.id] ? 'Retrying...' : 'Retry'}
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">
-                        Waiting to process...
-                      </p>
-                    )}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {/* Latest suggestion indicator */}
+              {aiLoading && (
+                <div className="flex items-center gap-3 p-3 bg-white dark:bg-surface-dark rounded-xl border border-violet-100 dark:border-violet-500/10 shadow-sm animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-violet-500 text-sm animate-spin">sync</span>
                   </div>
-                ))}
-            </div>
-          )}
+                  <div className="h-2 w-24 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                </div>
+              )}
 
-          {/* Combined Transcript Preview */}
-          {chunks.some(c => c.status === 'completed' && c.transcript_text) && (
-            <div className="mt-4 pt-4 border-t">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">
-                Combined Transcript
-              </h4>
-              <div className="bg-white rounded-lg p-3 shadow-sm border max-h-40 overflow-y-auto">
-                <p className="text-sm text-gray-700">
-                  {chunks
-                    .filter(c => c.status === 'completed' && c.transcript_text)
-                    .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
-                    .map(c => c.transcript_text)
-                    .join(' ')}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* All AI Suggestions History */}
-          {allSuggestions.length > 0 && (
-            <div className="mt-4 pt-4 border-t">
-              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <svg className="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                AI Suggestions ({allSuggestions.length} chunks)
-              </h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {allSuggestions.map((item, groupIdx) => (
-                  <div key={groupIdx} className="bg-violet-50 rounded-lg p-2 border border-violet-200">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-medium text-violet-600">
+              {allSuggestions.length === 0 && !aiLoading ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 opacity-60">
+                  <span className="material-symbols-outlined text-4xl text-violet-300 mb-2">lightbulb</span>
+                  <p className="text-sm text-violet-400 dark:text-violet-300 font-medium">Listening for insights...</p>
+                  <p className="text-xs text-slate-400 mt-1">Suggestions appear as you speak</p>
+                </div>
+              ) : (
+                allSuggestions.map((item, groupIdx) => (
+                  <div key={groupIdx} className="bg-white dark:bg-surface-dark rounded-xl p-3 border border-violet-100 dark:border-violet-500/10 shadow-sm animate-slide-up">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold text-violet-500 bg-violet-50 dark:bg-violet-900/20 px-2 py-0.5 rounded-full">
                         Chunk {item.chunkIndex + 1}
                       </span>
-                      {item.model && (
-                        <span className="text-[9px] text-violet-400 font-mono">
-                          {item.provider}/{item.model}
-                        </span>
+                    </div>
+                    <div className="space-y-2">
+                      {item.suggestions.map((suggestion, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <span className="mt-0.5 text-base">
+                            {suggestion.type === 'clarification' ? '🤔' :
+                              suggestion.type === 'follow_up' ? '💬' : '💡'}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{suggestion.title}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5">{suggestion.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Live Transcription Logic - Consolidated */}
+          <div className="flex-1 bg-surface-light dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col shadow-sm max-h-[40%]">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-lg">subtitles</span>
+                <h3 className="font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wide">
+                  Live Transcript
+                </h3>
+              </div>
+              {chunks.length > 0 && (
+                <span className="text-[10px] font-mono bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                  {chunks.length} chunks
+                </span>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chunks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center opacity-50">
+                  <p className="text-sm text-gray-400">Waiting for speech...</p>
+                </div>
+              ) : (
+                chunks
+                  .sort((a, b) => (b.chunk_index ?? 0) - (a.chunk_index ?? 0))
+                  .map((chunk, index) => (
+                    <div key={chunk.id || index} className="text-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-mono text-gray-400">#{(chunk.chunk_index ?? index) + 1}</span>
+                        {getStatusIcon(chunk.status)}
+                      </div>
+
+                      {chunk.status === 'completed' ? (
+                        <p className="text-gray-700 dark:text-gray-200 leading-relaxed pl-4 border-l-2 border-primary/20">
+                          {chunk.transcript_text}
+                        </p>
+                      ) : (
+                        <p className="text-gray-400 dark:text-gray-500 italic text-xs pl-4 border-l-2 border-transparent">
+                          {chunk.status === 'processing' ? 'Transcribing...' : 'Waiting...'}
+                        </p>
                       )}
                     </div>
-                    {item.suggestions.map((suggestion, idx) => (
-                      <div key={idx} className="flex items-start gap-1.5 mt-1">
-                        <span className="text-violet-500 text-xs">
-                          {suggestion.type === 'clarification' ? '❓' :
-                            suggestion.type === 'follow_up' ? '💬' : '📝'}
-                        </span>
-                        <div className="flex-1">
-                          <span className="text-xs font-medium text-violet-700">{suggestion.title}: </span>
-                          <span className="text-xs text-gray-600">{suggestion.message}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
+                  ))
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
