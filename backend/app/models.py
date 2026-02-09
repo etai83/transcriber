@@ -54,6 +54,7 @@ class Transcription(Base):
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)  # Error details if failed
     is_hallucination = Column(Boolean, default=False)  # Flag if text is likely hallucination
+    ai_suggestions = Column(Text, nullable=True)  # JSON: AI-generated suggestions for this chunk
     
     # Relationship to conversation
     conversation = relationship("Conversation", back_populates="chunks")

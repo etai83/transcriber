@@ -105,6 +105,51 @@ function Settings() {
                     </div>
                 </section>
 
+                {/* AI Assistant Section */}
+                <section>
+                    <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">AI Assistant</h3>
+                    <div className="flex flex-col rounded-xl overflow-hidden bg-surface-dark divide-y divide-slate-800 border border-slate-800">
+                        {/* AI Assistant Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-surface-dark">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20 text-violet-500">
+                                    <span className="material-symbols-outlined text-[20px]">psychology</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-white text-sm font-medium">Live Recommendations</span>
+                                    <span className="text-slate-500 text-xs">AI suggestions during recording</span>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={true}
+                                    onChange={() => { }}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+
+                        {/* AI Model Selection */}
+                        <button className="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full group">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20 text-violet-500">
+                                    <span className="material-symbols-outlined text-[20px]">smart_toy</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-white text-sm font-medium">AI Model</span>
+                                    <span className="text-slate-500 text-xs">Select model for recommendations</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-400 text-sm">gemini-2.0-flash</span>
+                                <span className="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
                 {/* Audio Section */}
                 <section>
                     <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">Audio</h3>

@@ -201,4 +201,33 @@ export const conversationApi = {
   },
 }
 
+export const aiAssistantApi = {
+  /**
+   * Get AI recommendations for a conversation
+   */
+  getRecommendations: async (conversationId, chunkId = null) => {
+    const response = await api.post('/ai-assistant/recommendations', {
+      conversation_id: conversationId,
+      chunk_id: chunkId,
+    })
+    return response.data
+  },
+
+  /**
+   * Get AI assistant status
+   */
+  getStatus: async () => {
+    const response = await api.get('/ai-assistant/status')
+    return response.data
+  },
+
+  /**
+   * Get AI assistant settings
+   */
+  getSettings: async () => {
+    const response = await api.get('/ai-assistant/settings')
+    return response.data
+  },
+}
+
 export default api

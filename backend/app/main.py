@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import init_db
-from .routers import transcriptions, conversations
+from .routers import transcriptions, conversations, ai_assistant
 from .config import settings
 
 from contextlib import asynccontextmanager
@@ -15,6 +15,7 @@ async def lifespan(app: FastAPI):
     print(f"Using Whisper model: {settings.whisper_model}")
     print(f"Audio storage: {settings.audio_storage_path}")
     print(f"Transcript storage: {settings.transcript_storage_path}")
+    print(f"AI Assistant: {'enabled' if settings.ai_assistant_enabled else 'disabled'} ({settings.ai_assistant_model})")
     yield
     # Cleanup code can go here
 
@@ -46,6 +47,7 @@ app.add_middleware(
 # Include routers
 app.include_router(transcriptions.router)
 app.include_router(conversations.router)
+app.include_router(ai_assistant.router)
 
 
 @app.get("/")

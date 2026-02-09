@@ -398,8 +398,8 @@ function ViewConversation({ onMenuClick }) {
                 <button
                   onClick={() => setShowSpeakerView(false)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${!showSpeakerView
-                      ? 'bg-surface-dark text-white shadow'
-                      : 'text-slate-400 hover:text-white'
+                    ? 'bg-surface-dark text-white shadow'
+                    : 'text-slate-400 hover:text-white'
                     }`}
                 >
                   Plain
@@ -407,8 +407,8 @@ function ViewConversation({ onMenuClick }) {
                 <button
                   onClick={() => setShowSpeakerView(true)}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${showSpeakerView
-                      ? 'bg-surface-dark text-white shadow'
-                      : 'text-slate-400 hover:text-white'
+                    ? 'bg-surface-dark text-white shadow'
+                    : 'text-slate-400 hover:text-white'
                     }`}
                 >
                   Speakers
@@ -450,8 +450,8 @@ function ViewConversation({ onMenuClick }) {
                     key={idx}
                     onClick={() => handleSegmentClick(segment)}
                     className={`group flex gap-3 p-3 rounded-2xl cursor-pointer transition-all ${isPlaying
-                        ? `${colors.bg} ${colors.border} border`
-                        : 'hover:bg-slate-800/50'
+                      ? `${colors.bg} ${colors.border} border`
+                      : 'hover:bg-slate-800/50'
                       }`}
                   >
                     {/* Avatar */}
@@ -534,8 +534,50 @@ function ViewConversation({ onMenuClick }) {
         <div className="h-8"></div>
       </main>
 
-      {/* AI Assistant */}
-      {!isEditing && completedChunks.length > 0 && <AIAssistant />}
+      {/* Saved AI Suggestions */}
+      {!isEditing && completedChunks.some(c => c.ai_suggestions?.length > 0) && (
+        <div className="px-5 pb-4">
+          <div className="bg-violet-900/20 border border-violet-500/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-violet-400 text-lg">psychology</span>
+              <span className="text-violet-400 font-semibold text-sm">AI Suggestions</span>
+              <span className="text-violet-400/60 text-xs ml-auto">
+                {completedChunks.filter(c => c.ai_suggestions?.length > 0).length} chunks with suggestions
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {completedChunks
+                .filter(c => c.ai_suggestions?.length > 0)
+                .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
+                .map(chunk => (
+                  <div key={chunk.id} className="border-t border-violet-500/10 pt-3 first:border-0 first:pt-0">
+                    <div className="text-[10px] text-violet-400/60 uppercase tracking-wider mb-2">
+                      Chunk {(chunk.chunk_index ?? 0) + 1}
+                    </div>
+                    <div className="space-y-2">
+                      {(Array.isArray(chunk.ai_suggestions) ? chunk.ai_suggestions : []).map((suggestion, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-2 p-2 bg-violet-900/20 rounded-lg"
+                        >
+                          <span className="material-symbols-outlined text-violet-400 text-sm mt-0.5">
+                            {suggestion.type === 'clarification' ? 'help' :
+                              suggestion.type === 'follow_up' ? 'chat' : 'sticky_note_2'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-violet-300">{suggestion.title}</div>
+                            <div className="text-xs text-slate-400">{suggestion.message}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

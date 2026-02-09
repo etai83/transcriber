@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { conversationApi, transcriptionApi } from '../services/api'
+import { conversationApi, transcriptionApi, aiAssistantApi } from '../services/api'
 import AIAssistant from './AIAssistant'
 
 function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, compact = false }) {
@@ -32,6 +32,13 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
   const [retryingChunks, setRetryingChunks] = useState({})
   const [uploadQueue, setUploadQueue] = useState([])
   const [uploadingCount, setUploadingCount] = useState(0)
+
+  // AI Assistant state
+  const [aiSuggestions, setAiSuggestions] = useState([])
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState(null)
+  const [aiEnabled, setAiEnabled] = useState(true)
+  const [lastProcessedChunkId, setLastProcessedChunkId] = useState(null)
 
   // Refs
   const mediaRecorderRef = useRef(null)
@@ -180,6 +187,43 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
 
     return () => clearInterval(pollInterval)
   }, [conversationId, chunks])
+
+  // Fetch AI recommendations when a new chunk completes
+  useEffect(() => {
+    if (!conversationId || !aiEnabled || !isRecording) return
+
+    const completedChunks = chunks.filter(c => c.status === 'completed' && c.transcript_text)
+    if (completedChunks.length === 0) return
+
+    // Get the latest completed chunk
+    const latestCompleted = completedChunks[completedChunks.length - 1]
+
+    // Only fetch if this is a new completed chunk
+    if (latestCompleted.id === lastProcessedChunkId) return
+
+    const fetchRecommendations = async () => {
+      setAiLoading(true)
+      setAiError(null)
+
+      try {
+        const result = await aiAssistantApi.getRecommendations(conversationId, latestCompleted.id)
+
+        if (result.error) {
+          setAiError(result.error)
+        } else {
+          setAiSuggestions(result.suggestions || [])
+        }
+        setLastProcessedChunkId(latestCompleted.id)
+      } catch (err) {
+        console.error('Error fetching AI recommendations:', err)
+        setAiError('Failed to get AI recommendations')
+      } finally {
+        setAiLoading(false)
+      }
+    }
+
+    fetchRecommendations()
+  }, [conversationId, chunks, aiEnabled, isRecording, lastProcessedChunkId])
 
   const uploadChunk = useCallback(async (blob, index) => {
     if (!conversationIdRef.current) return
@@ -702,7 +746,13 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         {/* AI Assistant Panel */}
         {isRecording && (
           <div className="mb-4 animate-slide-up">
-            <AIAssistant className="shadow-none border-t border-white/5 rounded-none bg-transparent" />
+            <AIAssistant
+              suggestions={aiSuggestions}
+              isLoading={aiLoading}
+              error={aiError}
+              onDismiss={() => setAiSuggestions([])}
+              className="shadow-none border-t border-white/5 rounded-none bg-transparent"
+            />
           </div>
         )}
 
@@ -1065,7 +1115,13 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
           {/* AI Assistant Panel */}
           {isRecording && (
             <div className="mb-4">
-              <AIAssistant className="shadow-sm border border-gray-200" />
+              <AIAssistant
+                suggestions={aiSuggestions}
+                isLoading={aiLoading}
+                error={aiError}
+                onDismiss={() => setAiSuggestions([])}
+                className="shadow-sm border border-gray-200"
+              />
             </div>
           )}
 
