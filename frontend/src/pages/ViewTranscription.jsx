@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { transcriptionApi } from '../services/api'
-import AudioPlayer from '../components/AudioPlayer'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 function ViewTranscription() {
   const { id } = useParams()
@@ -16,13 +16,22 @@ function ViewTranscription() {
     transcript_text: '',
   })
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // Audio player refs and state
+  const audioRef = useRef(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+
+  // Waveform visualization fake data
+  const [waveformBars, setWaveformBars] = useState([])
 
   const fetchTranscription = useCallback(async (isPolling = false) => {
     try {
       const data = await transcriptionApi.get(id)
       setTranscription(data)
 
-      // Only update edit form if not currently editing to avoid losing user input
       if (!isEditing) {
         setEditForm({
           title: data.title || '',
@@ -46,7 +55,6 @@ function ViewTranscription() {
     fetchTranscription()
   }, [fetchTranscription])
 
-  // Poll for updates if still processing
   useEffect(() => {
     if (transcription?.status === 'pending' || transcription?.status === 'processing') {
       const interval = setInterval(() => fetchTranscription(true), 3000)
@@ -54,49 +62,80 @@ function ViewTranscription() {
     }
   }, [transcription?.status, fetchTranscription])
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this transcription?')) {
-      return
-    }
+  // Generate random waveform bars once
+  useEffect(() => {
+    setWaveformBars(Array.from({ length: 60 }, () => Math.random() * 0.6 + 0.2))
+  }, [])
 
+  // Audio player effects
+  useEffect(() => {
+    if (!transcription) return
+
+    const audioUrl = transcriptionApi.getAudioUrl(transcription.id)
+    const audio = new Audio(audioUrl)
+    audioRef.current = audio
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration)
+      if (audio.duration === Infinity) {
+        audio.currentTime = 1e101;
+        audio.ontimeupdate = function () {
+          this.ontimeupdate = () => {
+            return;
+          }
+          audio.currentTime = 0;
+          setDuration(audio.duration)
+        }
+      }
+    }
+    const handleEnded = () => setIsPlaying(false)
+
+    audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata)
+    audio.addEventListener('ended', handleEnded)
+
+    return () => {
+      audio.pause()
+      audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      audio.removeEventListener('ended', handleEnded)
+    }
+  }, [transcription?.id])
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const handleSeek = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const percentage = x / rect.width
+    const newTime = percentage * duration
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime
+    }
+  }
+
+  const handleDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
     try {
       await transcriptionApi.delete(id)
       navigate('/')
     } catch (err) {
       alert('Failed to delete transcription')
-    }
-  }
-
-  const handleRetry = async () => {
-    try {
-      await transcriptionApi.retry(id)
-      // Update local state to show pending
-      setTranscription({ ...transcription, status: 'pending', error_message: null })
-    } catch (err) {
-      alert('Failed to retry transcription: ' + (err.response?.data?.detail || err.message))
-    }
-  }
-
-  const handleCopyText = () => {
-    const textToCopy = isEditing ? editForm.transcript_text : transcription?.transcript_text
-    if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy)
-      alert('Transcript copied to clipboard!')
-    }
-  }
-
-  const handleDownloadText = () => {
-    const textToDownload = isEditing ? editForm.transcript_text : transcription?.transcript_text
-    if (textToDownload) {
-      const blob = new Blob([textToDownload], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${transcription.filename.replace(/\.[^/.]+$/, '')}_transcript.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+    } finally {
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -117,73 +156,163 @@ function ViewTranscription() {
     }
   }
 
-  const handleCancel = () => {
-    setEditForm({
-      title: transcription.title || '',
-      description: transcription.description || '',
-      transcript_text: transcription.transcript_text || '',
-    })
-    setIsEditing(false)
+  const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '00:00'
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = Math.floor(seconds % 60)
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    }
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString()
+  const formatSpeakerLabel = (speaker) => {
+    if (!speaker) return 'Unknown';
+    // If simplified format
+    if (speaker === 'A' || speaker === '0' || speaker === 'SPEAKER_00') return 'Speaker 1';
+    if (speaker === 'B' || speaker === '1' || speaker === 'SPEAKER_01') return 'Speaker 2';
+
+    // If starts with SPEAKER_
+    if (speaker.startsWith('SPEAKER_')) {
+      const num = speaker.replace('SPEAKER_', '');
+      return `Speaker ${parseInt(num) + 1}`; // Show 1-indexed for humans
+    }
+
+    // If literal name
+    return speaker;
   }
 
-  const formatDuration = (seconds) => {
-    if (!seconds) return '-'
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+  const getSpeakerInitials = (speaker) => {
+    if (!speaker) return '?';
+    if (speaker === 'A' || speaker === '0' || speaker === 'SPEAKER_00') return 'S1';
+    if (speaker === 'B' || speaker === '1' || speaker === 'SPEAKER_01') return 'S2';
+
+    if (speaker.startsWith('SPEAKER_')) {
+      const num = speaker.replace('SPEAKER_', '');
+      return `S${parseInt(num) + 1}`;
+    }
+    return speaker.substring(0, 2).toUpperCase();
   }
 
-  const getLanguageLabel = (lang) => {
-    const labels = { en: 'English', he: 'Hebrew', auto: 'Auto' }
-    return labels[lang] || lang
+  const isPrimarySpeaker = (speaker) => {
+    return speaker === 'A' || speaker === '0' || speaker === 'SPEAKER_00';
   }
 
-  const getStatusBadge = (status) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
+  const renderContent = () => {
+    if (isEditing) {
+      return (
+        <textarea
+          value={editForm.transcript_text}
+          onChange={(e) => setEditForm({ ...editForm, transcript_text: e.target.value })}
+          className="w-full min-h-[500px] p-6 bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 rounded-xl text-gray-800 dark:text-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 font-body leading-relaxed text-base shadow-sm"
+          placeholder="Edit transcript..."
+        />
+      )
+    }
+
+    // Try to render segments if available
+    let segments = []
+    if (transcription.transcript_segments && transcription.transcript_segments.segments) {
+      segments = transcription.transcript_segments.segments
+    } else if (typeof transcription.transcript_segments === 'object' && transcription.transcript_segments !== null && Array.isArray(transcription.transcript_segments)) {
+      // Handle case where it might be a direct list
+      segments = transcription.transcript_segments
+    }
+
+    if (segments.length > 0) {
+      return (
+        <div className="space-y-6">
+          {segments.map((segment, index) => {
+            const isPrimary = isPrimarySpeaker(segment.speaker);
+            const label = formatSpeakerLabel(segment.speaker);
+            const initials = getSpeakerInitials(segment.speaker);
+
+            return (
+              <div key={index} className={`flex flex-col relative group ${isPrimary ? 'items-start' : 'items-end'}`}>
+                <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm relative ${isPrimary
+                    ? 'bg-white dark:bg-surface-dark rounded-tl-none border border-gray-100 dark:border-gray-800'
+                    : 'bg-primary/10 dark:bg-primary/20 rounded-tr-none border border-primary/10'
+                  }`}>
+                  {/* Speaker Header */}
+                  <div className={`flex items-center gap-2 mb-2 ${isPrimary ? 'flex-row' : 'flex-row-reverse'}`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] text-white font-bold shadow-sm shrink-0 ${isPrimary ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-purple-500 to-purple-600'
+                      }`}>
+                      {initials}
+                    </div>
+                    <span className={`text-xs font-bold tracking-wide ${isPrimary ? 'text-gray-700 dark:text-gray-300' : 'text-primary dark:text-blue-300'
+                      }`}>
+                      {label}
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-mono opacity-80">{formatTime(segment.start)}</span>
+                  </div>
+
+                  {/* Text */}
+                  <p className="text-[15px] leading-7 text-gray-800 dark:text-gray-100 whitespace-pre-wrap font-body selection:bg-primary/20 selection:text-primary-dark">
+                    {segment.text}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )
+    }
+
+    // Fallback to full text
+    if (transcription.transcript_text) {
+      return (
+        <div className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+            <span className="material-symbols-outlined text-gray-400">description</span>
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 uppercase tracking-widest">Full Transcript</span>
+          </div>
+
+          <p className="text-[15px] leading-8 text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-body">
+            {transcription.transcript_text}
+          </p>
+        </div>
+      )
     }
 
     return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status] || 'bg-gray-100'}`}>
-        {status === 'processing' && (
-          <svg className="inline-block w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        )}
-        {status}
-      </span>
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-white dark:bg-surface-dark rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-full">
+          <span className="material-symbols-outlined text-4xl text-gray-400">text_fields</span>
+        </div>
+        <div>
+          <p className="text-lg font-medium text-gray-900 dark:text-white">No transcript available</p>
+          <p className="text-sm text-gray-500 max-w-xs mx-auto mt-1">
+            The transcription text is missing or hasn't clear yet. If processing is complete, try retrying.
+          </p>
+        </div>
+      </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8">
-        <div className="flex items-center justify-center py-8">
-          <svg className="animate-spin h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span className="ml-3 text-gray-600">Loading...</span>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background-dark gap-4">
+        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-sm font-medium text-gray-500 animate-pulse">Loading transcription...</p>
       </div>
     )
   }
 
   if (error || !transcription) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-8">
-        <div className="text-center py-8">
-          <p className="text-red-500 mb-4">{error || 'Transcription not found'}</p>
-          <Link to="/" className="text-blue-600 hover:text-blue-800">
-            Back to Home
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background-light dark:bg-background-dark p-4">
+        <div className="bg-white dark:bg-surface-dark p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100 dark:border-gray-800">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="material-symbols-outlined text-3xl">error</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unavailable</h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-8">{error || 'Transcription not found or access denied.'}</p>
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold hover:scale-105 transition-transform w-full"
+          >
+            Back to Dashboard
           </Link>
         </div>
       </div>
@@ -191,201 +320,172 @@ function ViewTranscription() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <Link to="/" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
-              &larr; Back to list
-            </Link>
+    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark font-display overflow-hidden selection:bg-primary/20">
+      {/* Top Navigation Bar */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-surface-dark/90 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50 shrink-0 z-40 sticky top-0 transition-colors">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/"
+            className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all group"
+          >
+            <span className="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+          </Link>
 
-            {isEditing ? (
-              <div className="mt-2 space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                {isEditing ? (
                   <input
                     type="text"
                     value={editForm.title}
                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                    placeholder={transcription.filename}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="bg-transparent border-b-2 border-primary focus:outline-none min-w-[200px]"
+                    autoFocus
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea
-                    value={editForm.description}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    placeholder="Add a description..."
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold text-gray-900 mt-2">
-                  {transcription.title || transcription.filename}
-                </h1>
-                {transcription.description && (
-                  <p className="text-gray-600 mt-1">{transcription.description}</p>
+                ) : (
+                  transcription.title || transcription.filename
                 )}
-              </>
-            )}
-
-            <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
-              <span>Created: {formatDate(transcription.created_at)}</span>
-              <span>Duration: {formatDuration(transcription.duration_sec)}</span>
-              <span>Language: {getLanguageLabel(transcription.detected_language || transcription.language)}</span>
+              </h1>
             </div>
-            {transcription.updated_at && transcription.updated_at !== transcription.created_at && (
-              <div className="text-xs text-gray-400 mt-1">
-                Last updated: {formatDate(transcription.updated_at)}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center space-x-3">
-            {getStatusBadge(transcription.status)}
-
-            {/* Edit/Save/Cancel buttons */}
-            {transcription.status === 'completed' && !isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
-                title="Edit"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </button>
-            )}
-
-            {isEditing && (
-              <>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="px-3 py-1.5 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={handleDelete}
-              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-              title="Delete"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
+              <span>{new Date(transcription.created_at).toLocaleDateString()}</span>
+              <span>•</span>
+              <span>{formatTime(transcription.duration_sec)}</span>
+              {transcription.status !== 'completed' && (
+                <span className={`ml-2 px-2 py-0.5 rounded-md text-[10px] uppercase font-bold tracking-wider ${transcription.status === 'processing' ? 'bg-blue-100 text-blue-700 animate-pulse' :
+                    transcription.status === 'failed' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                  }`}>
+                  {transcription.status}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Audio Player */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-lg font-semibold mb-4">Audio</h2>
-        <AudioPlayer transcriptionId={transcription.id} />
-      </div>
+        <div className="flex items-center gap-2">
+          {!isEditing && transcription.status === 'completed' && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="p-2.5 text-gray-500 hover:text-primary transition-colors rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              title="Edit"
+            >
+              <span className="material-symbols-outlined text-[20px]">edit_note</span>
+            </button>
+          )}
 
-      {/* Transcript */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Transcript</h2>
-          {transcription.status === 'completed' && (
-            <div className="flex space-x-2">
+          {isEditing && (
+            <div className="flex gap-2">
               <button
-                onClick={handleCopyText}
-                className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"
               >
-                Copy
+                Cancel
               </button>
               <button
-                onClick={handleDownloadText}
-                className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-6 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center gap-2"
               >
-                Download
+                {saving ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                )}
+                Save
               </button>
             </div>
           )}
+
+          {!isEditing && (
+            <button
+              onClick={handleDelete}
+              className="p-2.5 text-gray-400 hover:text-red-500 transition-colors rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10"
+              title="Delete"
+            >
+              <span className="material-symbols-outlined text-[20px]">delete</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Main Layout: Audio Player on top, Chat below */}
+      <div className="flex-1 flex flex-col items-center overflow-hidden w-full max-w-5xl mx-auto">
+
+        {/* Audio Player Card - Floating styled */}
+        <div className="w-full px-6 py-6 pb-2 shrink-0 z-10">
+          <div className="bg-surface-light dark:bg-surface-dark rounded-[24px] border border-gray-200/60 dark:border-gray-700/60 shadow-xl overflow-hidden backdrop-blur-md relative">
+            {/* Progress Bar Background */}
+            <div
+              className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 dark:bg-gray-800 cursor-pointer group"
+              onClick={handleSeek}
+            >
+              <div
+                className="h-full bg-primary relative transition-all duration-75"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
+              >
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white shadow-md rounded-full scale-0 group-hover:scale-100 transition-transform"></div>
+              </div>
+            </div>
+
+            <div className="flex items-center p-5 gap-6">
+              <button
+                onClick={togglePlay}
+                className="w-14 h-14 shrink-0 flex items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[32px] fill-current">
+                  {isPlaying ? 'pause' : 'play_arrow'}
+                </span>
+              </button>
+
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white truncate mb-1">
+                  {transcription.title || transcription.filename}
+                </h3>
+                <div className="flex items-end gap-3 h-8 mb-1">
+                  {/* Fake Visualization */}
+                  <div className="flex items-end gap-[2px] h-full flex-1 opacity-50 mask-image-gradient">
+                    {waveformBars.map((h, i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 bg-gray-800 dark:bg-white rounded-full transition-all duration-300"
+                        style={{
+                          height: `${isPlaying ? Math.max(20, Math.random() * 100) : h * 100}%`,
+                          opacity: i / waveformBars.length > (currentTime / duration) ? 0.3 : 1
+                        }}
+                      ></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="font-mono text-sm font-medium text-gray-500 shrink-0 tabular-nums">
+                <span className="text-gray-900 dark:text-white">{formatTime(currentTime)}</span>
+                <span className="opacity-50 mx-1">/</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {transcription.status === 'pending' && (
-          <div className="py-8 text-center text-gray-500">
-            <svg className="w-12 h-12 mx-auto text-yellow-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p>Waiting to start transcription...</p>
+        {/* Transcript Content */}
+        <div className="flex-1 w-full overflow-y-auto px-6 py-4 pb-20 scroll-smooth">
+          <div className="max-w-3xl mx-auto">
+            {renderContent()}
           </div>
-        )}
+        </div>
 
-        {transcription.status === 'processing' && (
-          <div className="py-8 text-center text-gray-500">
-            <svg className="w-12 h-12 mx-auto text-blue-400 mb-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            <p>Transcription in progress...</p>
-            <p className="text-sm mt-1">This may take a few minutes depending on the audio length.</p>
-          </div>
-        )}
-
-        {transcription.status === 'completed' && (
-          isEditing ? (
-            <textarea
-              value={editForm.transcript_text}
-              onChange={(e) => setEditForm({ ...editForm, transcript_text: e.target.value })}
-              className="w-full p-4 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y min-h-[200px]"
-              dir={transcription.detected_language === 'he' ? 'rtl' : 'ltr'}
-              placeholder="Enter transcript text..."
-            />
-          ) : (
-            <div
-              className="prose max-w-none p-4 bg-gray-50 rounded-lg whitespace-pre-wrap"
-              dir={transcription.detected_language === 'he' ? 'rtl' : 'ltr'}
-            >
-              {transcription.transcript_text || 'No transcript available'}
-            </div>
-          )
-        )}
-
-        {transcription.status === 'failed' && (
-          <div className="py-8 text-center">
-            <svg className="w-12 h-12 mx-auto text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-red-500">Transcription failed</p>
-            {transcription.error_message && (
-              <p className="text-sm text-gray-500 mt-2">{transcription.error_message}</p>
-            )}
-            <button
-              onClick={handleRetry}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Retry Transcription</span>
-            </button>
-          </div>
-        )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Transcription"
+        message="Are you sure you want to delete this transcription? This action cannot be undone."
+        confirmText="Delete"
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }

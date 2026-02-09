@@ -22,6 +22,7 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
     const [renameValue, setRenameValue] = useState('')
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [recordingToDelete, setRecordingToDelete] = useState(null)
+    const [filterType, setFilterType] = useState('all') // 'all', 'conversation', 'transcription'
     const fileInputRef = useRef(null)
 
     // Fetch recordings on mount
@@ -125,9 +126,13 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
 
 
 
-    // Filter recordings based on search query
+    // Filter recordings based on search query and type
     const filteredRecordings = recordings.filter(recording => {
         if (!recording) return false
+
+        // Filter by type
+        if (filterType !== 'all' && recording.type !== filterType) return false
+
         if (!searchQuery) return true
         const query = searchQuery.toLowerCase()
 
@@ -404,17 +409,38 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
 
                 {/* Record Mode Content */}
                 {activeMode === 'record' && (
-                    <div className="mb-6">
-                        <ConversationRecorder
-                            onRecordingComplete={handleRecordingComplete}
-                            onRecordingStateChange={handleRecordingStateChange}
-                            compact={true}
-                        />
+                    <div className="mb-6 bg-surface-light dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-xl transition-all">
+                        {/* Fake Header for "Conversation" feel */}
+                        <div className="bg-gray-50 dark:bg-gray-800/50 px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-widest">
+                                    {isRecording ? 'Live Conversation' : 'Ready to Start'}
+                                </h3>
+                            </div>
+                            {isRecording && (
+                                <span className="text-xs font-mono text-primary font-bold animate-pulse">REC</span>
+                            )}
+                        </div>
+
+                        <div className="p-5">
+                            <ConversationRecorder
+                                onRecordingComplete={handleRecordingComplete}
+                                onRecordingStateChange={handleRecordingStateChange}
+                                compact={true}
+                            />
+
+                            {/* Embedded AI Assistant */}
+                            {isRecording && (
+                                <div className="mt-4 animate-slide-up">
+                                    <AIAssistant className="shadow-none border-t border-white/5 rounded-none bg-transparent" />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                {/* AI Assistant Panel - Shows during recording */}
-                {isRecording && <AIAssistant />}
+                {/* NOTE: AIAssistant is now embedded above within the record block */}
 
                 {/* Search Bar */}
                 <div className="mb-6">
@@ -436,7 +462,37 @@ function Dashboard({ onMenuClick, showFilesOnly = false }) {
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center justify-between mb-1">
                         <h2 className="text-gray-900 dark:text-white text-lg font-bold tracking-tight">Recent Activity</h2>
-                        <button className="text-sm font-medium text-primary hover:text-primary/80 transition-colors">View All</button>
+
+                        {/* Filter Toggle */}
+                        <div className="flex p-1 bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <button
+                                onClick={() => setFilterType('all')}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'all'
+                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => setFilterType('conversation')}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'conversation'
+                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                Conversations
+                            </button>
+                            <button
+                                onClick={() => setFilterType('transcription')}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filterType === 'transcription'
+                                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                            >
+                                Uploads
+                            </button>
+                        </div>
                     </div>
 
                     {/* Loading State */}
