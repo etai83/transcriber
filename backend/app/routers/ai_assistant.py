@@ -103,6 +103,7 @@ async def get_recommendations(
     result = await ai_assistant_service.generate_recommendations(
         latest_text=latest_text,
         previous_context=previous_context,
+        conversation_context=conversation.background_context,
         language=language
     )
     

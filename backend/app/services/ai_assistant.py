@@ -62,6 +62,7 @@ class AIAssistantService:
         cls,
         latest_text: str,
         previous_context: Optional[List[str]] = None,
+        conversation_context: Optional[str] = None,
         language: str = "auto"
     ) -> Dict[str, Any]:
         """
@@ -70,6 +71,7 @@ class AIAssistantService:
         Args:
             latest_text: The most recent transcribed chunk
             previous_context: List of previous chunk transcripts for context
+            conversation_context: Optional background context for the whole conversation
             language: Detected language of the transcript
             
         Returns:
@@ -88,7 +90,7 @@ class AIAssistantService:
                 context_text = "\n---\n".join(previous_context[-settings.ai_assistant_max_context_chunks:])
             
             # Craft the prompt
-            prompt = cls._build_prompt(latest_text, context_text, language)
+            prompt = cls._build_prompt(latest_text, context_text, conversation_context, language)
             
             # Route to the appropriate provider
             if settings.ai_assistant_provider == "gemini":
@@ -173,7 +175,7 @@ class AIAssistantService:
                 }
     
     @classmethod
-    def _build_prompt(cls, latest_text: str, context_text: str, language: str) -> str:
+    def _build_prompt(cls, latest_text: str, context_text: str, conversation_context: Optional[str], language: str) -> str:
         """Build the prompt for the AI model."""
         
         language_instruction = ""
@@ -184,6 +186,10 @@ class AIAssistantService:
         else:
             language_instruction = "Detect the language and respond in the same language as the conversation."
         
+        background_info = ""
+        if conversation_context:
+            background_info = f"\nBackground configuration/context for this conversation:\n{conversation_context}\n"
+        
         prompt = f"""You are an AI assistant helping someone understand a live conversation recording. 
 Your task is to identify:
 1. Any ambiguities or unclear references that might need clarification
@@ -191,7 +197,7 @@ Your task is to identify:
 3. Technical terms or concepts that might need explanation
 
 {language_instruction}
-
+{background_info}
 Previous conversation context:
 {context_text if context_text else "(No previous context)"}
 

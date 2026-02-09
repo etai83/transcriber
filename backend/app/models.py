@@ -12,6 +12,7 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=True)  # User-editable title
     description = Column(Text, nullable=True)  # User-editable description
+    background_context = Column(Text, nullable=True)  # Context provided by user before recording
     language = Column(String(10), default="auto")  # Source language hint
     trim_silence = Column(Boolean, default=False)  # Whether to trim silence
     chunk_interval_sec = Column(Integer, default=60)  # Interval between chunks in seconds

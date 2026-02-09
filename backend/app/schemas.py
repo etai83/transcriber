@@ -143,6 +143,7 @@ class ConversationCreate(BaseModel):
     """Schema for creating a new conversation."""
     title: Optional[str] = None
     description: Optional[str] = None
+    background_context: Optional[str] = None
     language: str = "auto"
     trim_silence: bool = False
     chunk_interval_sec: int = 60  # Default 1 minute chunks
@@ -206,6 +207,7 @@ class ConversationResponse(BaseModel):
     id: int
     title: Optional[str] = None
     description: Optional[str] = None
+    background_context: Optional[str] = None
     language: str
     trim_silence: bool
     chunk_interval_sec: int

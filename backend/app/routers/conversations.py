@@ -36,6 +36,7 @@ async def create_conversation(
     conversation = Conversation(
         title=default_title,
         description=conversation_data.description,
+        background_context=conversation_data.background_context,
         language=conversation_data.language,
         trim_silence=conversation_data.trim_silence,
         chunk_interval_sec=conversation_data.chunk_interval_sec,
