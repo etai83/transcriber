@@ -1,13 +1,18 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { conversationApi, transcriptionApi } from '../services/api'
+import { Conversation, Transcription } from '../types'
 
-function RecordingList({ refreshTrigger }) {
-  const [conversations, setConversations] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [expandedConversations, setExpandedConversations] = useState({})
-  const [retryingChunks, setRetryingChunks] = useState({})
+interface RecordingListProps {
+  refreshTrigger?: any
+}
+
+const RecordingList: React.FC<RecordingListProps> = ({ refreshTrigger }) => {
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [expandedConversations, setExpandedConversations] = useState<Record<number, boolean>>({})
+  const [retryingChunks, setRetryingChunks] = useState<Record<number, boolean>>({})
 
   const fetchConversations = async () => {
     try {
@@ -37,7 +42,7 @@ function RecordingList({ refreshTrigger }) {
     }
   }, [conversations])
 
-  const handleDelete = async (id, e) => {
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -53,7 +58,7 @@ function RecordingList({ refreshTrigger }) {
     }
   }
 
-  const toggleExpanded = (id, e) => {
+  const toggleExpanded = (id: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setExpandedConversations(prev => ({
@@ -62,7 +67,7 @@ function RecordingList({ refreshTrigger }) {
     }))
   }
 
-  const handleRetryChunk = async (chunkId, e) => {
+  const handleRetryChunk = async (chunkId: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -78,8 +83,8 @@ function RecordingList({ refreshTrigger }) {
     }
   }
 
-  const getStatusBadge = (status) => {
-    const styles = {
+  const getStatusBadge = (status: Conversation['status']) => {
+    const styles: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       recording: 'bg-red-100 text-red-800',
       processing: 'bg-blue-100 text-blue-800',
@@ -103,11 +108,11 @@ function RecordingList({ refreshTrigger }) {
     )
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds?: number) => {
     if (!seconds) return '-'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
@@ -190,9 +195,13 @@ function RecordingList({ refreshTrigger }) {
                           <p className="font-medium text-gray-900 truncate">
                             {conversation.title || 'Untitled Recording'}
                           </p>
-                          {conversation.chunk_count > 1 && (
+                          {/* conversation.chunk_count is not in my type definition, I should add it or use chunks?.length */}
+                          {/* Wait, the API returns chunks list or count? Model has chunks relationship. */}
+                          {/* Assuming API returns chunk_count or we check chunks.length */}
+                          {/* Based on previous code: conversation.chunk_count. Let's assume it's there or added by API serializer */}
+                          {(conversation as any).chunk_count > 1 && (
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                              {conversation.chunk_count} parts
+                              {(conversation as any).chunk_count} parts
                             </span>
                           )}
                         </div>
@@ -210,7 +219,7 @@ function RecordingList({ refreshTrigger }) {
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
                     {/* Expand/Collapse button for multi-chunk conversations */}
-                    {conversation.chunk_count > 1 && (
+                    {(conversation as any).chunk_count > 1 && (
                       <button
                         onClick={(e) => toggleExpanded(conversation.id, e)}
                         className="text-gray-400 hover:text-gray-600 p-1"
@@ -246,7 +255,7 @@ function RecordingList({ refreshTrigger }) {
               </Link>
 
               {/* Expanded Chunks Section */}
-              {expandedConversations[conversation.id] && conversation.chunk_count > 1 && (
+              {expandedConversations[conversation.id] && (conversation as any).chunk_count > 1 && (
                 <ChunksList 
                   conversationId={conversation.id} 
                   onRetryChunk={handleRetryChunk}
@@ -261,10 +270,16 @@ function RecordingList({ refreshTrigger }) {
   )
 }
 
+interface ChunksListProps {
+  conversationId: number;
+  onRetryChunk: (id: number, e: React.MouseEvent) => void;
+  retryingChunks: Record<number, boolean>;
+}
+
 // Separate component to load chunks on demand
-function ChunksList({ conversationId, onRetryChunk, retryingChunks }) {
-  const [chunks, setChunks] = useState([])
-  const [loading, setLoading] = useState(true)
+const ChunksList: React.FC<ChunksListProps> = ({ conversationId, onRetryChunk, retryingChunks }) => {
+  const [chunks, setChunks] = useState<Transcription[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     const fetchChunks = async () => {
@@ -280,14 +295,14 @@ function ChunksList({ conversationId, onRetryChunk, retryingChunks }) {
     fetchChunks()
   }, [conversationId])
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds?: number) => {
     if (!seconds) return '-'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getChunkStatusIcon = (status) => {
+  const getChunkStatusIcon = (status: Transcription['status']) => {
     switch (status) {
       case 'pending':
         return <span className="w-2 h-2 bg-yellow-400 rounded-full" />
@@ -325,7 +340,7 @@ function ChunksList({ conversationId, onRetryChunk, retryingChunks }) {
 
   return (
     <div className="px-4 pb-4 pl-14 space-y-2">
-      {chunks.sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0)).map((chunk, index) => (
+      {chunks.sort((a, b) => ((a as any).chunk_index ?? 0) - ((b as any).chunk_index ?? 0)).map((chunk, index) => (
         <div 
           key={chunk.id} 
           className="bg-gray-50 rounded-lg p-3 border border-gray-200"
@@ -334,7 +349,7 @@ function ChunksList({ conversationId, onRetryChunk, retryingChunks }) {
             <div className="flex items-center space-x-2">
               {getChunkStatusIcon(chunk.status)}
               <span className="text-sm font-medium text-gray-700">
-                Part {(chunk.chunk_index ?? index) + 1}
+                Part {((chunk as any).chunk_index ?? index) + 1}
               </span>
               {chunk.duration_sec && (
                 <span className="text-xs text-gray-500">

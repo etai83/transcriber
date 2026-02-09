@@ -1,13 +1,15 @@
-from pydantic import BaseModel, field_validator
-from datetime import datetime
-from typing import Optional, List, Any, Union
 import json
+from datetime import datetime
+from typing import List, Optional
 
+from pydantic import BaseModel, field_validator
 
 # Diarization segment schemas
 
+
 class TranscriptSegment(BaseModel):
     """Schema for a single transcript segment with speaker label."""
+
     start: float
     end: float
     text: str
@@ -16,6 +18,7 @@ class TranscriptSegment(BaseModel):
 
 class TranscriptSegmentsResponse(BaseModel):
     """Schema for diarized transcript segments."""
+
     segments: List[TranscriptSegment] = []
     speakers: List[str] = []
     full_text: str = ""
@@ -23,18 +26,21 @@ class TranscriptSegmentsResponse(BaseModel):
 
 class TranscriptionBase(BaseModel):
     """Base schema for transcription data."""
+
     filename: str
     language: str = "auto"
 
 
 class TranscriptionCreate(TranscriptionBase):
     """Schema for creating a new transcription."""
+
     title: Optional[str] = None
     description: Optional[str] = None
 
 
 class TranscriptionUpdate(BaseModel):
     """Schema for updating a transcription."""
+
     title: Optional[str] = None
     description: Optional[str] = None
     transcript_text: Optional[str] = None
@@ -42,6 +48,7 @@ class TranscriptionUpdate(BaseModel):
 
 class TranscriptionResponse(BaseModel):
     """Schema for transcription response."""
+
     id: int
     conversation_id: Optional[int] = None
     chunk_index: Optional[int] = None
@@ -61,8 +68,8 @@ class TranscriptionResponse(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     is_hallucination: bool = False
-    
-    @field_validator('transcript_segments', mode='before')
+
+    @field_validator("transcript_segments", mode="before")
     @classmethod
     def parse_transcript_segments(cls, v):
         """Parse JSON string to dict if needed."""
@@ -74,13 +81,14 @@ class TranscriptionResponse(BaseModel):
             except (json.JSONDecodeError, TypeError):
                 return None
         return v
-    
+
     class Config:
         from_attributes = True
 
 
 class TranscriptionList(BaseModel):
     """Schema for listing transcriptions."""
+
     id: int
     conversation_id: Optional[int] = None
     chunk_index: Optional[int] = None
@@ -95,13 +103,14 @@ class TranscriptionList(BaseModel):
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     is_hallucination: bool = False
-    
+
     class Config:
         from_attributes = True
 
 
 class TranscriptionStatus(BaseModel):
     """Schema for transcription status check."""
+
     id: int
     status: str
     error_message: Optional[str] = None
@@ -109,6 +118,7 @@ class TranscriptionStatus(BaseModel):
 
 class UploadResponse(BaseModel):
     """Schema for upload response."""
+
     id: int
     message: str
     status: str
@@ -117,24 +127,30 @@ class UploadResponse(BaseModel):
 
 # Conversation schemas
 
+
 class ConversationCreate(BaseModel):
     """Schema for creating a new conversation."""
+
     title: Optional[str] = None
     description: Optional[str] = None
     language: str = "auto"
     trim_silence: bool = False
     chunk_interval_sec: int = 60  # Default 1 minute chunks
-    num_speakers: Optional[int] = 2  # Expected number of speakers for diarization, None to disable
+    num_speakers: Optional[
+        int
+    ] = 2  # Expected number of speakers for diarization, None to disable
 
 
 class ConversationUpdate(BaseModel):
     """Schema for updating a conversation."""
+
     title: Optional[str] = None
     description: Optional[str] = None
 
 
 class ConversationChunkResponse(BaseModel):
     """Schema for a transcription chunk within a conversation."""
+
     id: int
     chunk_index: int
     filename: str
@@ -146,8 +162,8 @@ class ConversationChunkResponse(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     is_hallucination: bool = False
-    
-    @field_validator('transcript_segments', mode='before')
+
+    @field_validator("transcript_segments", mode="before")
     @classmethod
     def parse_transcript_segments(cls, v):
         """Parse JSON string to dict if needed."""
@@ -159,13 +175,14 @@ class ConversationChunkResponse(BaseModel):
             except (json.JSONDecodeError, TypeError):
                 return None
         return v
-    
+
     class Config:
         from_attributes = True
 
 
 class ConversationResponse(BaseModel):
     """Schema for conversation response."""
+
     id: int
     title: Optional[str] = None
     description: Optional[str] = None
@@ -179,13 +196,14 @@ class ConversationResponse(BaseModel):
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     chunks: List[ConversationChunkResponse] = []
-    
+
     class Config:
         from_attributes = True
 
 
 class ConversationList(BaseModel):
     """Schema for listing conversations."""
+
     id: int
     title: Optional[str] = None
     description: Optional[str] = None
@@ -195,13 +213,14 @@ class ConversationList(BaseModel):
     chunk_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 
 
 class ConversationTranscript(BaseModel):
     """Schema for full conversation transcript."""
+
     id: int
     title: Optional[str] = None
     full_transcript: str

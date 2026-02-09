@@ -1,20 +1,18 @@
-"""Alembic environment configuration."""
-from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
+# Import our models and database configuration
+import sys
+from logging.config import fileConfig
+from pathlib import Path
+
 from sqlalchemy import pool
 
 from alembic import context
 
-# Import our models and database configuration
-import sys
-from pathlib import Path
+# Add the backend directory to the path so we can import 'app'
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# Add the backend directory to the path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
+from app.config import settings
 from app.database import Base
-from app.models import Conversation, Transcription  # Import models to register them
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -24,6 +22,10 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Override sqlalchemy.url with the one from settings
+print(f"Using database URL: {settings.database_url}")
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -66,20 +68,25 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    # Fix for SQLite: check_same_thread=False
+    connect_args = {}
+    if settings.database_url.startswith("sqlite"):
+        connect_args = {"check_same_thread": False}
+
+    connectable = create_engine(
+        settings.database_url,
+        connect_args=connect_args,
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
 
+
+from sqlalchemy import create_engine  # Needed for the fix above
 
 if context.is_offline_mode():
     run_migrations_offline()

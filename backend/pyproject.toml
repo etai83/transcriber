@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "transcriber-backend"
+version = "1.1.0"
+description = "Local Audio Transcriber Backend"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = ">=0.104.0"
+uvicorn = {extras = ["standard"], version = ">=0.24.0"}
+python-multipart = ">=0.0.6"
+sqlalchemy = ">=2.0.0"
+openai-whisper = ">=20231117"
+pydantic = ">=2.0.0"
+pydantic-settings = ">=2.0.0"
+python-dotenv = ">=1.0.0"
+aiofiles = ">=23.0.0"
+pyannote-audio = ">=3.1.0"
+huggingface-hub = "<1.0.0"
+torch = "2.3.1"
+torchaudio = "2.3.1"
+alembic = ">=1.13.0"
+psycopg2-binary = "^2.9.9" # For PostgreSQL
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.11.0"
+ruff = "^0.1.6"
+pytest-asyncio = "^0.23.2"
+httpx = "^0.25.2"
+factory-boy = "^3.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+
+[tool.ruff]
+select = ["E", "F", "I", "B"]
+ignore = []
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = "test_*.py"

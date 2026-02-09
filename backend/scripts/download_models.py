@@ -17,19 +17,20 @@ If you have SSL issues (corporate proxy), run with:
     SSL_CERT_FILE="" REQUESTS_CA_BUNDLE="" python scripts/download_models.py
 """
 import os
-import sys
 import ssl
+import sys
 
 # Workaround for SSL certificate issues (corporate proxies, VPNs)
 # This disables SSL verification - only use for downloading models
 if os.environ.get("DISABLE_SSL_VERIFY") or os.environ.get("SSL_CERT_FILE") == "":
     print("WARNING: SSL verification disabled")
     import urllib3
+
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    
+
     # Monkey-patch SSL context
     ssl._create_default_https_context = ssl._create_unverified_context
-    
+
     # Set environment variable for httpx/requests
     os.environ["CURL_CA_BUNDLE"] = ""
     os.environ["REQUESTS_CA_BUNDLE"] = ""
@@ -45,41 +46,40 @@ def download_models():
     print("Pyannote Model Downloader")
     print("=" * 60)
     print()
-    
+
     # Check if pyannote is installed
     try:
-        from pyannote.audio import Pipeline
         import torch
+        from pyannote.audio import Pipeline
     except ImportError as e:
         print(f"Error: Required packages not installed: {e}")
         print("Please run: pip install -r requirements.txt")
         sys.exit(1)
-    
+
     # Check for GPU/MPS
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        print(f"Device: CUDA GPU")
-    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        print("Device: CUDA GPU")
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
         device = torch.device("mps")
-        print(f"Device: Apple Silicon MPS")
+        print("Device: Apple Silicon MPS")
     else:
         device = torch.device("cpu")
-        print(f"Device: CPU")
+        print("Device: CPU")
         print("Note: Running on CPU. GPU/MPS recommended for faster diarization.")
     print()
-    
+
     print("Downloading pyannote/speaker-diarization-3.1...")
     print("This may take several minutes on first run.")
     print()
-    
+
     try:
         # Note: newer versions of pyannote use 'token' instead of 'use_auth_token'
         pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1",
-            token=HF_TOKEN
+            "pyannote/speaker-diarization-3.1", token=HF_TOKEN
         )
         pipeline.to(device)
-        
+
         print()
         print("=" * 60)
         print("SUCCESS! Models downloaded and cached.")
@@ -89,7 +89,7 @@ def download_models():
         print()
         print("The diarization service will now work offline.")
         print("You can run the transcriber application normally.")
-        
+
     except Exception as e:
         print()
         print("=" * 60)
@@ -102,7 +102,9 @@ def download_models():
         print("2. If you have SSL/certificate issues, try:")
         print("   DISABLE_SSL_VERIFY=1 python scripts/download_models.py")
         print("3. Ensure the HuggingFace token is valid")
-        print("4. Accept pyannote terms at: https://huggingface.co/pyannote/speaker-diarization-3.1")
+        print(
+            "4. Accept pyannote terms at: https://huggingface.co/pyannote/speaker-diarization-3.1"
+        )
         sys.exit(1)
 
 

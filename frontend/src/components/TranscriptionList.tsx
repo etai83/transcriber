@@ -1,11 +1,16 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { transcriptionApi } from '../services/api'
+import { Transcription } from '../types'
 
-function TranscriptionList({ refreshTrigger }) {
-  const [transcriptions, setTranscriptions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+interface TranscriptionListProps {
+  refreshTrigger?: any; // Could be a boolean or a timestamp
+}
+
+const TranscriptionList: React.FC<TranscriptionListProps> = ({ refreshTrigger }) => {
+  const [transcriptions, setTranscriptions] = useState<Transcription[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchTranscriptions = async () => {
     try {
@@ -35,7 +40,7 @@ function TranscriptionList({ refreshTrigger }) {
     }
   }, [transcriptions])
 
-  const handleDelete = async (id, e) => {
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -46,12 +51,12 @@ function TranscriptionList({ refreshTrigger }) {
     try {
       await transcriptionApi.delete(id)
       setTranscriptions(transcriptions.filter((t) => t.id !== id))
-    } catch (err) {
+    } catch (err: any) {
       alert('Failed to delete transcription')
     }
   }
 
-  const handleRetry = async (id, e) => {
+  const handleRetry = async (id: number, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -59,15 +64,15 @@ function TranscriptionList({ refreshTrigger }) {
       await transcriptionApi.retry(id)
       // Update the local state to show pending status
       setTranscriptions(transcriptions.map((t) => 
-        t.id === id ? { ...t, status: 'pending', error_message: null } : t
+        t.id === id ? { ...t, status: 'pending', error_message: undefined } : t
       ))
-    } catch (err) {
+    } catch (err: any) {
       alert('Failed to retry transcription: ' + (err.response?.data?.detail || err.message))
     }
   }
 
-  const getStatusBadge = (status) => {
-    const styles = {
+  const getStatusBadge = (status: Transcription['status']) => {
+    const styles: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       processing: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
@@ -87,19 +92,19 @@ function TranscriptionList({ refreshTrigger }) {
     )
   }
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds?: number) => {
     if (!seconds) return '-'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getLanguageLabel = (lang) => {
-    const labels = { en: 'English', he: 'Hebrew', auto: 'Auto' }
+  const getLanguageLabel = (lang: string) => {
+    const labels: Record<string, string> = { en: 'English', he: 'Hebrew', auto: 'Auto' }
     return labels[lang] || lang
   }
 
@@ -198,7 +203,8 @@ function TranscriptionList({ refreshTrigger }) {
                       className="text-gray-400 hover:text-blue-500 p-1"
                       title="Retry transcription"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"

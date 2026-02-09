@@ -1,12 +1,15 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .config import settings
 
+# Configure connection arguments based on database type
+connect_args = {}
+if settings.database_url.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
 # Create engine
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False}  # Needed for SQLite
-)
+engine = create_engine(settings.database_url, connect_args=connect_args)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -25,5 +28,8 @@ def get_db():
 
 
 def init_db():
-    """Initialize the database, creating all tables."""
+    """Initialize the database, creating all tables.
+    Note: When using Alembic, this is typically handled by migrations,
+    but we keep it for dev/testing convenience.
+    """
     Base.metadata.create_all(bind=engine)

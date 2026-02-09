@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { Transcription, Conversation } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
@@ -13,11 +14,11 @@ export const transcriptionApi = {
   /**
    * Upload an audio file for transcription
    */
-  upload: async (file, language = 'auto', trimSilence = false) => {
+  upload: async (file: File, language: string = 'auto', trimSilence: boolean = false) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('language', language)
-    formData.append('trim_silence', trimSilence)
+    formData.append('trim_silence', trimSilence.toString())
 
     const response = await api.post('/upload', formData, {
       headers: {
@@ -30,7 +31,7 @@ export const transcriptionApi = {
   /**
    * Get list of all transcriptions
    */
-  list: async (status = null) => {
+  list: async (status: string | null = null): Promise<Transcription[]> => {
     const params = status ? { status } : {}
     const response = await api.get('/transcriptions', { params })
     return response.data
@@ -39,7 +40,7 @@ export const transcriptionApi = {
   /**
    * Get a single transcription by ID
    */
-  get: async (id) => {
+  get: async (id: number): Promise<Transcription> => {
     const response = await api.get(`/transcriptions/${id}`)
     return response.data
   },
@@ -47,7 +48,7 @@ export const transcriptionApi = {
   /**
    * Get the status of a transcription
    */
-  getStatus: async (id) => {
+  getStatus: async (id: number) => {
     const response = await api.get(`/status/${id}`)
     return response.data
   },
@@ -55,7 +56,7 @@ export const transcriptionApi = {
   /**
    * Get the transcript text
    */
-  getTranscript: async (id) => {
+  getTranscript: async (id: number) => {
     const response = await api.get(`/transcriptions/${id}/transcript`)
     return response.data
   },
@@ -63,14 +64,14 @@ export const transcriptionApi = {
   /**
    * Get the audio file URL
    */
-  getAudioUrl: (id) => {
+  getAudioUrl: (id: number) => {
     return `${API_BASE_URL}/transcriptions/${id}/audio`
   },
 
   /**
    * Delete a transcription
    */
-  delete: async (id) => {
+  delete: async (id: number) => {
     const response = await api.delete(`/transcriptions/${id}`)
     return response.data
   },
@@ -78,7 +79,7 @@ export const transcriptionApi = {
   /**
    * Retry a failed transcription
    */
-  retry: async (id) => {
+  retry: async (id: number) => {
     const response = await api.post(`/transcriptions/${id}/retry`)
     return response.data
   },
@@ -86,7 +87,7 @@ export const transcriptionApi = {
   /**
    * Update a transcription (title, description, transcript_text)
    */
-  update: async (id, data) => {
+  update: async (id: number, data: Partial<Transcription>) => {
     const response = await api.patch(`/transcriptions/${id}`, data)
     return response.data
   },
@@ -104,7 +105,7 @@ export const conversationApi = {
   /**
    * Create a new conversation
    */
-  create: async (data) => {
+  create: async (data: any) => {
     const response = await api.post('/conversations', data)
     return response.data
   },
@@ -112,7 +113,7 @@ export const conversationApi = {
   /**
    * List all conversations
    */
-  list: async (status = null) => {
+  list: async (status: string | null = null): Promise<Conversation[]> => {
     const params = status ? { status } : {}
     const response = await api.get('/conversations', { params })
     return response.data
@@ -121,7 +122,7 @@ export const conversationApi = {
   /**
    * Get a single conversation with all chunks
    */
-  get: async (id) => {
+  get: async (id: number): Promise<Conversation> => {
     const response = await api.get(`/conversations/${id}`)
     return response.data
   },
@@ -129,10 +130,10 @@ export const conversationApi = {
   /**
    * Add an audio chunk to a conversation
    */
-  addChunk: async (conversationId, file, chunkIndex) => {
+  addChunk: async (conversationId: number, file: File, chunkIndex: number) => {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('chunk_index', chunkIndex)
+    formData.append('chunk_index', chunkIndex.toString())
 
     const response = await api.post(`/conversations/${conversationId}/chunks`, formData, {
       headers: {
@@ -145,7 +146,7 @@ export const conversationApi = {
   /**
    * Mark a conversation as complete
    */
-  complete: async (id) => {
+  complete: async (id: number) => {
     const response = await api.post(`/conversations/${id}/complete`)
     return response.data
   },
@@ -153,7 +154,7 @@ export const conversationApi = {
   /**
    * Get full transcript for a conversation
    */
-  getTranscript: async (id) => {
+  getTranscript: async (id: number) => {
     const response = await api.get(`/conversations/${id}/transcript`)
     return response.data
   },
@@ -161,7 +162,7 @@ export const conversationApi = {
   /**
    * Update a conversation (title, description)
    */
-  update: async (id, data) => {
+  update: async (id: number, data: Partial<Conversation>) => {
     const response = await api.patch(`/conversations/${id}`, data)
     return response.data
   },
@@ -169,7 +170,7 @@ export const conversationApi = {
   /**
    * Delete a conversation and all its chunks
    */
-  delete: async (id) => {
+  delete: async (id: number) => {
     const response = await api.delete(`/conversations/${id}`)
     return response.data
   },
@@ -177,7 +178,7 @@ export const conversationApi = {
   /**
    * Refresh a conversation's status based on its chunks
    */
-  refreshStatus: async (id) => {
+  refreshStatus: async (id: number) => {
     const response = await api.post(`/conversations/${id}/refresh-status`)
     return response.data
   },
