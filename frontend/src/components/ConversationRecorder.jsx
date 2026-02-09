@@ -30,6 +30,8 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
   const [error, setError] = useState(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [retryingChunks, setRetryingChunks] = useState({})
+  const [uploadQueue, setUploadQueue] = useState([])
+  const [uploadingCount, setUploadingCount] = useState(0)
 
   // Refs
   const mediaRecorderRef = useRef(null)
@@ -228,6 +230,24 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
     }
   }, [])
 
+  // Process upload queue
+  useEffect(() => {
+    if (uploadQueue.length === 0) return
+
+    const processingCount = chunks.filter(c => ['pending', 'processing'].includes(c.status)).length
+
+    // Limit to 2 concurrent transcriptions (uploading + processing)
+    if (processingCount + uploadingCount >= 2) return
+
+    const nextChunk = uploadQueue[0]
+    setUploadQueue(prev => prev.slice(1))
+    setUploadingCount(prev => prev + 1)
+
+    uploadChunk(nextChunk.blob, nextChunk.index).finally(() => {
+      setUploadingCount(prev => prev - 1)
+    })
+  }, [uploadQueue, chunks, uploadingCount, uploadChunk])
+
   // Create a new MediaRecorder instance
   const createMediaRecorder = useCallback(() => {
     if (!streamRef.current) return null
@@ -261,7 +281,8 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
 
         // Only upload if there's meaningful data (more than 1KB)
         if (blob.size > 1000) {
-          uploadChunk(blob, currentIndex)
+          // Queue the chunk instead of uploading immediately
+          setUploadQueue(prev => [...prev, { blob, index: currentIndex }])
 
           // Increment chunk index for next chunk
           setChunkIndex(prev => prev + 1)
@@ -506,6 +527,8 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
     setChunkIndex(0)
     setRecordingTime(0)
     setChunkTime(0)
+    setUploadQueue([])
+    setUploadingCount(0)
     setError(null)
   }
 
@@ -691,12 +714,20 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                 <span className="material-symbols-outlined text-primary text-sm">subtitles</span>
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Transcript</span>
               </div>
-              {processingChunks.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
-                  <span className="text-[10px] text-amber-500 font-medium">Processing {processingChunks.length} chunk{processingChunks.length > 1 ? 's' : ''}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {processingChunks.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div>
+                    <span className="text-[10px] text-amber-500 font-medium">Processing {processingChunks.length}</span>
+                  </div>
+                )}
+                {uploadQueue.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span className="text-[10px] text-blue-400 font-medium">Queued {uploadQueue.length}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="max-h-48 overflow-y-auto p-3 space-y-3">
@@ -730,23 +761,33 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                 )
               })}
 
-              {/* Processing indicators */}
-              {processingChunks.map((chunk) => (
-                <div key={chunk.id} className="flex items-center gap-2 text-slate-500 py-2">
-                  <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                  <span className="text-xs">Processing chunk {chunk.chunk_index + 1}...</span>
-                </div>
-              ))}
             </div>
+
+            {/* Processing indicators */}
+            {processingChunks.map((chunk) => (
+              <div key={chunk.id} className="flex items-center gap-2 text-slate-500 py-2">
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                <span className="text-xs">Processing chunk {chunk.chunk_index + 1}...</span>
+              </div>
+            ))}
+
+            {/* Queued indicators */}
+            {uploadQueue.map((item) => (
+              <div key={`queued-${item.index}`} className="flex items-center gap-2 text-slate-500 py-2 opacity-60">
+                <span className="material-symbols-outlined text-sm">hourglass_empty</span>
+                <span className="text-xs">Chunk {item.index + 1} (Queued)...</span>
+              </div>
+            ))}
           </div>
-        )}
+        )
+        }
 
         {/* Privacy Indicator */}
         <div className="flex items-center justify-center gap-2 py-2">
           <span className="material-symbols-outlined text-slate-400 text-sm">shield_lock</span>
           <p className="text-slate-400 text-xs font-medium">Secure Local Processing (Device Only)</p>
         </div>
-      </div>
+      </div >
     )
   }
 
