@@ -28,7 +28,7 @@ import os
 router = APIRouter(prefix="/api", tags=["transcriptions"])
 
 
-async def generate_conversation_metadata_task(conversation_id: int):
+async def generate_conversation_metadata_task(conversation_id: int, force_update: bool = False):
     """Background task to generate conversation title and description."""
     engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -69,7 +69,7 @@ async def generate_conversation_metadata_task(conversation_id: int):
         
         # Update conversation if we got valid results
         if result.get("title") and not result.get("error"):
-            # Only update title if it's default/system generated
+            # Update title if it's default/system generated OR forced
             current_title = conversation.title
             is_default_title = (
                 not current_title or 
@@ -77,10 +77,12 @@ async def generate_conversation_metadata_task(conversation_id: int):
                 current_title.startswith("Chunk ")
             )
             
-            if is_default_title:
+            if is_default_title or force_update:
                 conversation.title = result["title"]
         
         if result.get("description") and not result.get("error"):
+             # For description, always update if we have a result (or maybe check existing?) 
+             # Existing logic was just update. I'll stick to it.
             conversation.description = result["description"]
         
         db.commit()
@@ -167,16 +169,6 @@ def process_transcription(transcription_id: int, db_url: str, num_speakers: Opti
         # Refresh conversation status if this transcription belongs to a conversation
         if transcription.conversation_id:
             _refresh_conversation_status(db, transcription.conversation_id)
-            
-            # Check if conversation is now completed
-            conversation = db.query(Conversation).filter(Conversation.id == transcription.conversation_id).first()
-            if conversation and conversation.status == "completed":
-                # Run metadata generation task
-                # Since we are in a sync thread, run async task with asyncio.run
-                try:
-                    asyncio.run(generate_conversation_metadata_task(conversation.id))
-                except Exception as e:
-                    print(f"Failed to run metadata generation task: {e}")
         
     except Exception as e:
         # Handle errors

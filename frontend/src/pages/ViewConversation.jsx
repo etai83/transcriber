@@ -20,6 +20,7 @@ function ViewConversation({ onMenuClick }) {
   const [seekToTime, setSeekToTime] = useState(null)
   const [editingSegmentId, setEditingSegmentId] = useState(null)
   const [editedText, setEditedText] = useState('')
+  const [generatingMetadata, setGeneratingMetadata] = useState(false)
   const audioRef = useRef(null)
 
   const fetchConversation = async () => {
@@ -141,6 +142,23 @@ function ViewConversation({ onMenuClick }) {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+    }
+  }
+
+  const handleGenerateMetadata = async () => {
+    setGeneratingMetadata(true)
+    try {
+      const updated = await conversationApi.generateMetadata(id)
+      setConversation(updated)
+      setEditForm({
+        title: updated.title || '',
+        description: updated.description || '',
+      })
+    } catch (err) {
+      console.error('Failed to generate metadata:', err)
+      alert(err.response?.data?.detail || 'Failed to generate AI metadata')
+    } finally {
+      setGeneratingMetadata(false)
     }
   }
 
@@ -306,6 +324,16 @@ function ViewConversation({ onMenuClick }) {
             {!isEditing ? (
               <>
                 <button
+                  onClick={handleGenerateMetadata}
+                  disabled={generatingMetadata}
+                  className="size-9 flex items-center justify-center rounded-full hover:bg-slate-700 transition-colors text-slate-300 disabled:opacity-50"
+                  title="Auto-Generate Title & Description"
+                >
+                  <span className={`material-symbols-outlined text-xl ${generatingMetadata ? 'animate-spin' : ''}`}>
+                    {generatingMetadata ? 'progress_activity' : 'auto_awesome'}
+                  </span>
+                </button>
+                <button
                   onClick={() => setIsEditing(true)}
                   className="size-9 flex items-center justify-center rounded-full hover:bg-slate-700 transition-colors text-slate-300"
                   title="Edit"
@@ -379,6 +407,13 @@ function ViewConversation({ onMenuClick }) {
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto hide-scrollbar">
+        {/* Description */}
+        {conversation.description && !isEditing && (
+          <div className="px-5 py-4 border-b border-slate-800/50 bg-slate-900/20">
+            <p className="text-sm text-slate-300 leading-relaxed">{conversation.description}</p>
+          </div>
+        )}
+
         {/* Status: Recording/Processing */}
         {(conversation.status === 'recording' || conversation.status === 'processing') && (
           <div className="flex flex-col items-center justify-center py-16">

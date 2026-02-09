@@ -199,6 +199,14 @@ export const conversationApi = {
     })
     return response.data
   },
+
+  /**
+   * Trigger AI metadata generation manually
+   */
+  generateMetadata: async (id) => {
+    const response = await api.post(`/conversations/${id}/generate-metadata`)
+    return response.data
+  },
 }
 
 export const aiAssistantApi = {
