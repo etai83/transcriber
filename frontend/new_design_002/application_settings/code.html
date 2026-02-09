@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Application Settings</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f6df0",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#111822",
+                        "surface-dark": "#1d2633",
+                        "surface-highlight": "#253041",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 2px;
+        }
+        
+        /* Toggle Switch Animation */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #0f6df0;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #0f6df0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white antialiased overflow-x-hidden">
+<div class="relative flex h-full min-h-screen w-full flex-col max-w-md mx-auto border-x border-slate-800 shadow-2xl">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between bg-background-dark/95 backdrop-blur-md px-4 py-3 border-b border-slate-800">
+<button class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-800 transition-colors text-white">
+<span class="material-symbols-outlined text-[28px]">menu</span>
+</button>
+<h1 class="text-white text-lg font-bold tracking-tight">Settings</h1>
+<div class="flex items-center justify-end w-10">
+<!-- Placeholder for balance right side if needed, or search -->
+<button class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
+<span class="material-symbols-outlined text-[24px]">search</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col gap-6 p-4 pb-12">
+<!-- Transcription Section -->
+<section>
+<h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">Transcription</h3>
+<div class="flex flex-col rounded-xl overflow-hidden bg-surface-dark divide-y divide-slate-800 border border-slate-800">
+<!-- Item: Whisper Model -->
+<button class="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full group">
+<div class="flex items-center gap-3 text-left">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-500">
+<span class="material-symbols-outlined text-[20px]">psychology</span>
+</div>
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Whisper Model</span>
+<span class="text-slate-500 text-xs">Accuracy vs Speed</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-sm">Large-v2</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</button>
+<!-- Item: Compute Type -->
+<button class="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full">
+<div class="flex items-center gap-3 text-left">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-500">
+<span class="material-symbols-outlined text-[20px]">memory</span>
+</div>
+<span class="text-white text-sm font-medium">Compute Type</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-sm">Int8</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</button>
+<!-- Item: Speaker Diarization (Toggle) -->
+<div class="flex items-center justify-between p-4 bg-surface-dark">
+<div class="flex items-center gap-3">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-500">
+<span class="material-symbols-outlined text-[20px]">record_voice_over</span>
+</div>
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Speaker Diarization</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Audio Section -->
+<section>
+<h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">Audio</h3>
+<div class="flex flex-col rounded-xl overflow-hidden bg-surface-dark divide-y divide-slate-800 border border-slate-800">
+<!-- Item: Input Device -->
+<button class="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full">
+<div class="flex items-center gap-3 text-left">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-500">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</div>
+<span class="text-white text-sm font-medium">Input Device</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-sm max-w-[120px] truncate">iPhone Microphone</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</button>
+<!-- Item: Auto-normalization (Toggle) -->
+<div class="flex items-center justify-between p-4 bg-surface-dark">
+<div class="flex items-center gap-3">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-500">
+<span class="material-symbols-outlined text-[20px]">equalizer</span>
+</div>
+<div class="flex flex-col">
+<span class="text-white text-sm font-medium">Auto-normalization</span>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Language Section -->
+<section>
+<h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">Language</h3>
+<div class="flex flex-col rounded-xl overflow-hidden bg-surface-dark divide-y divide-slate-800 border border-slate-800">
+<!-- Item: App Language -->
+<button class="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full">
+<div class="flex items-center gap-3 text-left">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-500">
+<span class="material-symbols-outlined text-[20px]">language</span>
+</div>
+<span class="text-white text-sm font-medium">App Language</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-sm">English</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</button>
+<!-- Item: Default Translation -->
+<button class="flex items-center justify-between p-4 hover:bg-surface-highlight transition-colors w-full">
+<div class="flex items-center gap-3 text-left">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-500">
+<span class="material-symbols-outlined text-[20px]">translate</span>
+</div>
+<span class="text-white text-sm font-medium">Default Translation</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-slate-400 text-sm">Hebrew</span>
+<span class="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+<!-- Local Storage Section -->
+<section>
+<h3 class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 ml-2">Local Storage</h3>
+<div class="flex flex-col rounded-xl overflow-hidden bg-surface-dark divide-y divide-slate-800 border border-slate-800">
+<!-- Item: Storage Used -->
+<div class="flex items-center justify-between p-4 bg-surface-dark">
+<div class="flex items-center gap-3">
+<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-500">
+<span class="material-symbols-outlined text-[20px]">hard_drive</span>
+</div>
+<span class="text-white text-sm font-medium">Storage Used</span>
+</div>
+<span class="text-slate-400 text-sm">1.2 GB</span>
+</div>
+<!-- Item: Export All -->
+<button class="flex items-center justify-center p-4 hover:bg-surface-highlight transition-colors w-full">
+<span class="text-primary text-sm font-semibold">Export All Data</span>
+</button>
+<!-- Item: Clear Cache -->
+<button class="flex items-center justify-center p-4 hover:bg-surface-highlight transition-colors w-full border-t border-slate-800">
+<span class="text-red-500 text-sm font-semibold">Clear Cache</span>
+</button>
+</div>
+</section>
+<!-- Footer -->
+<div class="text-center mt-4">
+<p class="text-slate-600 text-xs">Version 1.0.2 (Build 240)</p>
+</div>
+</main>
+</div>
+</body></html>

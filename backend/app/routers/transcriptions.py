@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from ..database import get_db
 from ..models import Transcription, Conversation
+from ..services.ai_assistant import ai_assistant_service
 from ..schemas import (
     TranscriptionResponse,
     TranscriptionList,
@@ -28,9 +29,73 @@ import os
 router = APIRouter(prefix="/api", tags=["transcriptions"])
 
 
+async def generate_conversation_metadata_task(conversation_id: int, force_update: bool = False):
+    """Background task to generate conversation title and description."""
+    engine = create_engine(settings.database_url, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+    
+    try:
+        conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if not conversation:
+            return
+        
+        # Get all completed chunks with transcripts
+        completed_chunks = [
+            chunk for chunk in conversation.chunks
+            if chunk.status == "completed" and chunk.transcript_text
+        ]
+        
+        if not completed_chunks:
+            return
+            
+        # Combine all transcripts
+        full_transcript = " ".join([
+            chunk.transcript_text 
+            for chunk in sorted(completed_chunks, key=lambda c: c.chunk_index or 0)
+        ])
+        
+        # Detect language from chunks
+        languages = [chunk.detected_language for chunk in completed_chunks if chunk.detected_language]
+        detected_language = max(set(languages), key=languages.count) if languages else conversation.language
+        
+        # Generate metadata using AI
+        if not ai_assistant_service.is_enabled():
+            return
+
+        result = await ai_assistant_service.generate_conversation_metadata(
+            full_transcript,
+            language=detected_language
+        )
+        
+        # Update conversation if we got valid results
+        if result.get("title") and not result.get("error"):
+            # Update title if it's default/system generated OR forced
+            current_title = conversation.title
+            is_default_title = (
+                not current_title or 
+                current_title.startswith("Conversation 20") or
+                current_title.startswith("Chunk ")
+            )
+            
+            if is_default_title or force_update:
+                conversation.title = result["title"]
+        
+        if result.get("description") and not result.get("error"):
+             # For description, always update if we have a result (or maybe check existing?) 
+             # Existing logic was just update. I'll stick to it.
+            conversation.description = result["description"]
+        
+        db.commit()
+        
+    except Exception as e:
+        print(f"Error generating conversation metadata: {e}")
+    finally:
+        db.close()
+
+
 def run_transcription_job(transcription_id: int, db_url: str, num_speakers: Optional[int] = None):
-    """
-    Background task to process transcription.
+    """Background task to process transcription with optional diarization.
     
     Args:
         transcription_id: ID of the transcription to process

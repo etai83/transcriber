@@ -181,6 +181,61 @@ export const conversationApi = {
     const response = await api.post(`/conversations/${id}/refresh-status`)
     return response.data
   },
+
+  /**
+   * Upload an audio file and create a conversation
+   */
+  upload: async (formData, onProgress) => {
+    const response = await api.post('/conversations/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = progressEvent.loaded / progressEvent.total
+          onProgress(progress)
+        }
+      },
+    })
+    return response.data
+  },
+
+  /**
+   * Trigger AI metadata generation manually
+   */
+  generateMetadata: async (id) => {
+    const response = await api.post(`/conversations/${id}/generate-metadata`)
+    return response.data
+  },
+}
+
+export const aiAssistantApi = {
+  /**
+   * Get AI recommendations for a conversation
+   */
+  getRecommendations: async (conversationId, chunkId = null) => {
+    const response = await api.post('/ai-assistant/recommendations', {
+      conversation_id: conversationId,
+      chunk_id: chunkId,
+    })
+    return response.data
+  },
+
+  /**
+   * Get AI assistant status
+   */
+  getStatus: async () => {
+    const response = await api.get('/ai-assistant/status')
+    return response.data
+  },
+
+  /**
+   * Get AI assistant settings
+   */
+  getSettings: async () => {
+    const response = await api.get('/ai-assistant/settings')
+    return response.data
+  },
 }
 
 export default api

@@ -18,8 +18,9 @@ from ..schemas import (
 )
 from ..services.file_manager import file_manager
 from ..services.conversation_service import ConversationService
+from ..services.ai_assistant import ai_assistant_service
 from ..config import settings
-from .transcriptions import run_transcription_job
+from .transcriptions import run_transcription_job, generate_conversation_metadata_task
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -36,6 +37,7 @@ async def create_conversation(
     conversation = Conversation(
         title=default_title,
         description=conversation_data.description,
+        background_context=conversation_data.background_context,
         language=conversation_data.language,
         trim_silence=conversation_data.trim_silence,
         chunk_interval_sec=conversation_data.chunk_interval_sec,
@@ -110,6 +112,7 @@ async def add_chunk(
 @router.post("/{conversation_id}/complete", response_model=ConversationResponse)
 async def complete_conversation(
     conversation_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Mark a conversation as complete (recording finished)."""
@@ -259,6 +262,28 @@ async def update_conversation(
     return conversation
 
 
+@router.post("/{conversation_id}/generate-metadata", response_model=ConversationResponse)
+async def generate_metadata_endpoint(
+    conversation_id: int,
+    db: Session = Depends(get_db)
+):
+    """Manually trigger AI metadata generation."""
+    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    if not ai_assistant_service.is_enabled():
+        raise HTTPException(status_code=400, detail="AI Assistant is disabled")
+    
+    # We want to wait for the result so the UI updates immediately
+    # Pass force_update=True to allow overwriting existing titles
+    await generate_conversation_metadata_task(conversation_id, force_update=True)
+    
+    # Refresh to get updated title/description
+    db.expire(conversation)
+    db.refresh(conversation)
+    
+    return conversation
 @router.delete("/{conversation_id}")
 async def delete_conversation(conversation_id: int, db: Session = Depends(get_db)):
     """Delete a conversation and all its chunks."""

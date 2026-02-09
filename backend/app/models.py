@@ -12,6 +12,7 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(255), nullable=True)  # User-editable title
     description = Column(Text, nullable=True)  # User-editable description
+    background_context = Column(Text, nullable=True)  # Context provided by user before recording
     language = Column(String(10), default="auto")  # Source language hint
     trim_silence = Column(Boolean, default=False)  # Whether to trim silence
     chunk_interval_sec = Column(Integer, default=60)  # Interval between chunks in seconds
@@ -54,6 +55,8 @@ class Transcription(Base):
     completed_at = Column(DateTime, nullable=True)
     error_message = Column(Text, nullable=True)  # Error details if failed
     is_hallucination = Column(Boolean, default=False)  # Flag if text is likely hallucination
+    ai_suggestions = Column(Text, nullable=True)  # JSON: AI-generated suggestions for this chunk
+    ai_model = Column(String(100), nullable=True)  # AI model that generated suggestions (e.g., "ollama/llama3.1")
     
     # Relationship to conversation
     conversation = relationship("Conversation", back_populates="chunks")

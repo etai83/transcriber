@@ -10,6 +10,18 @@ class Settings(BaseSettings):
     # Set to False to disable speaker diarization (useful if models aren't downloaded)
     enable_diarization: bool = False
     
+    # AI Assistant settings
+    ai_assistant_enabled: bool = True
+    ai_assistant_provider: str = "ollama"  # "gemini" or "ollama"
+    ai_assistant_model: str = "gemini-2.0-flash"  # Model for Gemini
+    ai_assistant_ollama_model: str = "llama3.1"  # Model for Ollama
+    ai_assistant_ollama_url: str = "http://localhost:11434"  # Ollama server URL
+    google_api_key: str = ""
+    ai_assistant_max_context_chunks: int = 3
+    
+    # HuggingFace
+    hf_token: str = ""
+    
     # Storage paths
     audio_storage_path: str = "./storage/audio"
     transcript_storage_path: str = "./storage/transcripts"

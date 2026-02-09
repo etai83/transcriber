@@ -21,6 +21,13 @@ class TranscriptSegmentsResponse(BaseModel):
     full_text: str = ""
 
 
+class AISuggestion(BaseModel):
+    """Schema for an AI-generated suggestion."""
+    type: str  # clarification, follow_up, note
+    title: str
+    message: str
+
+
 class TranscriptionBase(BaseModel):
     """Base schema for transcription data."""
     filename: str
@@ -61,6 +68,21 @@ class TranscriptionResponse(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     is_hallucination: bool = False
+    ai_suggestions: Optional[List[AISuggestion]] = None
+    ai_model: Optional[str] = None
+    
+    @field_validator('ai_suggestions', mode='before')
+    @classmethod
+    def parse_ai_suggestions(cls, v):
+        """Parse JSON string to list if needed."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
     
     @field_validator('transcript_segments', mode='before')
     @classmethod
@@ -121,6 +143,7 @@ class ConversationCreate(BaseModel):
     """Schema for creating a new conversation."""
     title: Optional[str] = None
     description: Optional[str] = None
+    background_context: Optional[str] = None
     language: str = "auto"
     trim_silence: bool = False
     chunk_interval_sec: int = 60  # Default 1 minute chunks
@@ -146,6 +169,21 @@ class ConversationChunkResponse(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     is_hallucination: bool = False
+    ai_suggestions: Optional[List[AISuggestion]] = None
+    ai_model: Optional[str] = None
+    
+    @field_validator('ai_suggestions', mode='before')
+    @classmethod
+    def parse_ai_suggestions(cls, v):
+        """Parse JSON string to list if needed."""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
     
     @field_validator('transcript_segments', mode='before')
     @classmethod
@@ -169,6 +207,7 @@ class ConversationResponse(BaseModel):
     id: int
     title: Optional[str] = None
     description: Optional[str] = None
+    background_context: Optional[str] = None
     language: str
     trim_silence: bool
     chunk_interval_sec: int
