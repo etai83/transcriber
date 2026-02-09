@@ -5,7 +5,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -20,6 +19,8 @@ from ..schemas import (
 )
 from ..services.file_manager import file_manager
 from ..services.transcriber import transcriber_service
+from ..services.transcription_service import TranscriptionService
+from ..services.conversation_service import ConversationService
 from ..config import settings
 import traceback
 import os
@@ -27,132 +28,37 @@ import os
 router = APIRouter(prefix="/api", tags=["transcriptions"])
 
 
-def process_transcription(transcription_id: int, db_url: str, num_speakers: Optional[int] = None):
-    """Background task to process transcription with optional diarization.
+def run_transcription_job(transcription_id: int, db_url: str, num_speakers: Optional[int] = None):
+    """
+    Background task to process transcription.
     
     Args:
         transcription_id: ID of the transcription to process
         db_url: Database connection URL
-        num_speakers: Number of speakers for diarization (overrides conversation setting)
+        num_speakers: Number of speakers for diarization
     """
-
-    
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     
     try:
-        # Get transcription record
+        # Instantiate services
+        service = TranscriptionService(db, transcriber_service)
+        conversation_service = ConversationService(db)
+        
+        # Process transcription
+        service.process_job(transcription_id, num_speakers)
+        
+        # Refresh conversation status if needed
         transcription = db.query(Transcription).filter(Transcription.id == transcription_id).first()
-        if not transcription:
-            return
-        
-        # Update status to processing
-        transcription.status = "processing"
-        db.commit()
-        
-        # Determine number of speakers for diarization
-        # Priority: 1) explicit num_speakers param, 2) conversation setting
-        effective_num_speakers = num_speakers
-        if effective_num_speakers is None and transcription.conversation_id and settings.enable_diarization:
-            conversation = db.query(Conversation).filter(
-                Conversation.id == transcription.conversation_id
-            ).first()
-            if conversation and conversation.num_speakers:
-                effective_num_speakers = conversation.num_speakers
-        
-        # Perform transcription (with diarization if num_speakers is set AND diarization is enabled)
-        if effective_num_speakers and settings.enable_diarization:
-            print(f"Transcribing with diarization ({effective_num_speakers} speakers)...")
-            result = transcriber_service.transcribe_with_diarization(
-                transcription.audio_path,
-                transcription.language,
-                trim_silence=transcription.trim_silence,
-                num_speakers=effective_num_speakers
-            )
-        else:
-            if effective_num_speakers and not settings.enable_diarization:
-                print("Diarization is disabled in settings. Transcribing without speaker detection.")
-            result = transcriber_service.transcribe(
-                transcription.audio_path,
-                transcription.language,
-                trim_silence=transcription.trim_silence
-            )
-        
-        # Save transcript to file
-        transcript_path = file_manager.save_transcript(transcription_id, result["text"])
-        
-        # Update record
-        transcription.transcript_path = transcript_path
-        transcription.transcript_text = result["text"]
-        transcription.detected_language = result["language"]
-        transcription.duration_sec = result["duration"]
-        transcription.is_hallucination = result.get("is_hallucination", False)
-        transcription.status = "completed"
-        transcription.completed_at = datetime.utcnow()
-        
-        # Save diarization segments if available
-        if result.get("transcript_segments"):
-            transcription.transcript_segments = json.dumps(
-                result["transcript_segments"], 
-                ensure_ascii=False
-            )
-        
-        db.commit()
+        if transcription and transcription.conversation_id:
+             conversation_service.refresh_status(transcription.conversation_id)
 
-        # Refresh conversation status if this transcription belongs to a conversation
-        if transcription.conversation_id:
-            _refresh_conversation_status(db, transcription.conversation_id)
-        
     except Exception as e:
-        # Handle errors
-
-        print(f"Transcription error: {e}")
+        print(f"Job execution error: {e}")
         traceback.print_exc()
-        
-        transcription = db.query(Transcription).filter(Transcription.id == transcription_id).first()
-        if transcription:
-            transcription.status = "failed"
-            transcription.error_message = str(e)
-            db.commit()
-
-            if transcription.conversation_id:
-                _refresh_conversation_status(db, transcription.conversation_id)
     finally:
         db.close()
-
-
-def _refresh_conversation_status(db: Session, conversation_id: int) -> None:
-    """Update conversation status and total duration based on chunk statuses."""
-    conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
-    if not conversation:
-        return
-
-    # Always update total duration from chunks
-    conversation.total_duration_sec = sum(
-        chunk.duration_sec or 0
-        for chunk in conversation.chunks
-    )
-
-    # Don't override status while actively recording
-    if conversation.status == "recording":
-        db.commit()
-        return
-
-    chunk_statuses = [chunk.status for chunk in conversation.chunks]
-    if not chunk_statuses:
-        db.commit()
-        return
-
-    if all(status == "completed" for status in chunk_statuses):
-        conversation.status = "completed"
-        conversation.completed_at = datetime.utcnow()
-    elif any(status in ["pending", "processing"] for status in chunk_statuses):
-        conversation.status = "processing"
-    elif any(status == "failed" for status in chunk_statuses):
-        conversation.status = "failed"
-
-    db.commit()
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -202,7 +108,6 @@ async def upload_audio(
     unique_name, audio_path = file_manager.save_audio_file(content, file.filename)
     
     # Generate default title from filename (remove extension)
-
     default_title = os.path.splitext(file.filename)[0].replace('_', ' ').replace('-', ' ').title()
     
     # Create database record
@@ -218,13 +123,12 @@ async def upload_audio(
     db.commit()
     db.refresh(transcription)
     
-    # Start background transcription (pass num_speakers for diarization)
-
+    # Start background transcription
     background_tasks.add_task(
-        process_transcription, 
+        run_transcription_job,
         transcription.id, 
         settings.database_url,
-        num_speakers=num_speakers
+        num_speakers
     )
     
     return UploadResponse(
@@ -401,11 +305,11 @@ async def retry_transcription(
     db.commit()
 
     if transcription.conversation_id:
-        _refresh_conversation_status(db, transcription.conversation_id)
+        conversation_service = ConversationService(db)
+        conversation_service.refresh_status(transcription.conversation_id)
     
     # Start background transcription
-
-    background_tasks.add_task(process_transcription, transcription.id, settings.database_url)
+    background_tasks.add_task(run_transcription_job, transcription.id, settings.database_url)
     
     return TranscriptionStatus(
         id=transcription.id,

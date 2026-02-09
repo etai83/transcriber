@@ -17,8 +17,9 @@ from ..schemas import (
     TranscriptSegmentsResponse
 )
 from ..services.file_manager import file_manager
-from ..services.transcriber import transcriber_service
-from .transcriptions import process_transcription
+from ..services.conversation_service import ConversationService
+from ..config import settings
+from .transcriptions import run_transcription_job
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -91,12 +92,11 @@ async def add_chunk(
     db.refresh(transcription)
     
     # Start background transcription with diarization if enabled
-    from ..config import settings
     background_tasks.add_task(
-        process_transcription, 
+        run_transcription_job,
         transcription.id, 
         settings.database_url,
-        num_speakers=conversation.num_speakers
+        conversation.num_speakers
     )
     
     return UploadResponse(
@@ -118,27 +118,15 @@ async def complete_conversation(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
-    # Calculate total duration
-    total_duration = sum(
-        chunk.duration_sec or 0 
-        for chunk in conversation.chunks
-    )
-    
-    # Determine status based on chunks
-    chunk_statuses = [chunk.status for chunk in conversation.chunks]
-    if all(s == "completed" for s in chunk_statuses):
-        conversation.status = "completed"
-        conversation.completed_at = datetime.utcnow()
-    elif any(s == "failed" for s in chunk_statuses):
-        conversation.status = "failed"
-    elif any(s in ["pending", "processing"] for s in chunk_statuses):
-        conversation.status = "processing"
-    else:
-        conversation.status = "completed"
-        conversation.completed_at = datetime.utcnow()
-    
-    conversation.total_duration_sec = total_duration
+    # Change status to processing to signal that recording is done
+    # This allows ConversationService to calculate the final status
+    conversation.status = "processing"
     db.commit()
+    
+    # Refresh status based on chunks
+    service = ConversationService(db)
+    service.refresh_status(conversation_id)
+    
     db.refresh(conversation)
     
     return conversation
@@ -155,30 +143,9 @@ async def refresh_conversation_status(
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
     
-    if conversation.status == "recording":
-        # Don't update status while still recording
-        return conversation
+    service = ConversationService(db)
+    service.refresh_status(conversation_id)
     
-    # Calculate total duration
-    total_duration = sum(
-        chunk.duration_sec or 0 
-        for chunk in conversation.chunks
-    )
-    
-    # Determine status based on chunks
-    chunk_statuses = [chunk.status for chunk in conversation.chunks]
-    if len(chunk_statuses) == 0:
-        pass  # Keep current status
-    elif all(s == "completed" for s in chunk_statuses):
-        conversation.status = "completed"
-        conversation.completed_at = datetime.utcnow()
-    elif any(s == "failed" for s in chunk_statuses) and not any(s in ["pending", "processing"] for s in chunk_statuses):
-        conversation.status = "failed"
-    elif any(s in ["pending", "processing"] for s in chunk_statuses):
-        conversation.status = "processing"
-    
-    conversation.total_duration_sec = total_duration
-    db.commit()
     db.refresh(conversation)
     
     return conversation
