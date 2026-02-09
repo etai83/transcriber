@@ -45,6 +45,7 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
   const [conversationTitle, setConversationTitle] = useState(null)
   const [conversationDescription, setConversationDescription] = useState(null)
   const [metadataGenerating, setMetadataGenerating] = useState(false)
+  const [backgroundContext, setBackgroundContext] = useState('')
 
   // Refs
   const mediaRecorderRef = useRef(null)
@@ -454,7 +455,8 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         language,
         trim_silence: trimSilence,
         chunk_interval_sec: chunkInterval,
-        num_speakers: numSpeakers
+        num_speakers: numSpeakers,
+        background_context: backgroundContext
       })
       setConversationId(conversation.id)
       conversationIdRef.current = conversation.id
@@ -692,7 +694,7 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
     return (
       <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
         {/* LEFT MAIN PANEL: Controls & Transcript */}
-        <div className="flex-1 w-full flex flex-col gap-4 min-w-0">
+        <div className="w-full lg:w-1/3 flex flex-col gap-4 min-w-0">
 
           {/* Error Messages */}
           {error && (
@@ -713,6 +715,23 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                 <li>Allow microphone permissions</li>
                 <li>Refresh the page</li>
               </ul>
+            </div>
+          )}
+
+          {/* Settings Input - Compact Mode */}
+          {!isRecording && !conversationId && (
+            <div className="mb-4 space-y-3 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  Conversation Context (Optional)
+                </label>
+                <textarea
+                  value={backgroundContext}
+                  onChange={(e) => setBackgroundContext(e.target.value)}
+                  placeholder="E.g., 'Medical consultation with patient claiming lower back pain', 'Job interview for Senior Dev position', 'Brainstorming session for Q3 marketing'"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none h-20 placeholder:text-slate-600"
+                />
+              </div>
             </div>
           )}
 
@@ -946,7 +965,7 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         </div>
 
         {/* RIGHT SIDEBAR PANEL: AI Suggestions History */}
-        <div className={`w-full lg:w-80 shrink-0 flex flex-col transition-all duration-500 ${isRecording || chunks.length > 0 || allSuggestions.length > 0 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 hidden lg:flex'}`}>
+        <div className={`w-full lg:w-2/3 shrink-0 flex flex-col transition-all duration-500 ${isRecording || chunks.length > 0 || allSuggestions.length > 0 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 hidden lg:flex'}`}>
           {(isRecording || chunks.length > 0 || allSuggestions.length > 0) && (
             <div className="sticky top-4 flex flex-col gap-4">
               <div className="bg-slate-900/50 rounded-2xl border border-slate-700/50 overflow-hidden flex flex-col shadow-sm max-h-[calc(100vh-120px)] backdrop-blur-sm">
@@ -992,16 +1011,16 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                         </div>
                         <div className="space-y-2.5">
                           {item.suggestions.map((suggestion, idx) => (
-                            <div key={idx} className="flex gap-2.5">
-                              <div className="shrink-0 mt-0.5 bg-slate-800 rounded-md w-6 h-6 flex items-center justify-center">
-                                <span className="text-xs">
+                            <div key={idx} className="flex gap-3">
+                              <div className="shrink-0 mt-0.5 bg-slate-800 rounded-lg w-8 h-8 flex items-center justify-center">
+                                <span className="text-sm">
                                   {suggestion.type === 'clarification' ? '🤔' :
                                     suggestion.type === 'follow_up' ? '💬' : '💡'}
                                 </span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[11px] font-bold text-slate-200 leading-tight mb-0.5 group-hover:text-primary transition-colors">{suggestion.title}</p>
-                                <p className="text-[11px] text-slate-400 leading-relaxed font-medium">{suggestion.message}</p>
+                                <p className="text-sm font-bold text-slate-200 leading-snug mb-1 group-hover:text-primary transition-colors">{suggestion.title}</p>
+                                <p className="text-sm text-slate-400 leading-relaxed font-medium">{suggestion.message}</p>
                               </div>
                             </div>
                           ))}
@@ -1195,6 +1214,18 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         {!isRecording && !conversationId && (
           <div className="border-t border-gray-200 dark:border-gray-800 pt-6 mt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
+                  Conversation Context (Optional)
+                </label>
+                <textarea
+                  value={backgroundContext}
+                  onChange={(e) => setBackgroundContext(e.target.value)}
+                  placeholder="E.g., 'Medical consultation with patient claiming lower back pain', 'Job interview for Senior Dev position', 'Brainstorming session for Q3 marketing'"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900 dark:text-white resize-none h-24"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
                   Microphone Input
