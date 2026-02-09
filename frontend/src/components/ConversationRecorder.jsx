@@ -35,10 +35,16 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
 
   // AI Assistant state
   const [aiSuggestions, setAiSuggestions] = useState([])
+  const [allSuggestions, setAllSuggestions] = useState([]) // Accumulated suggestions across all chunks
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState(null)
   const [aiEnabled, setAiEnabled] = useState(true)
   const [lastProcessedChunkId, setLastProcessedChunkId] = useState(null)
+
+  // Conversation metadata state
+  const [conversationTitle, setConversationTitle] = useState(null)
+  const [conversationDescription, setConversationDescription] = useState(null)
+  const [metadataGenerating, setMetadataGenerating] = useState(false)
 
   // Refs
   const mediaRecorderRef = useRef(null)
@@ -211,7 +217,19 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
         if (result.error) {
           setAiError(result.error)
         } else {
-          setAiSuggestions(result.suggestions || [])
+          const newSuggestions = result.suggestions || []
+          setAiSuggestions(newSuggestions)
+          // Add to accumulated suggestions with chunk info
+          if (newSuggestions.length > 0) {
+            setAllSuggestions(prev => [...prev, {
+              chunkIndex: latestCompleted.chunk_index,
+              chunkId: latestCompleted.id,
+              model: result.model,
+              provider: result.provider,
+              suggestions: newSuggestions,
+              timestamp: new Date().toISOString()
+            }])
+          }
         }
         setLastProcessedChunkId(latestCompleted.id)
       } catch (err) {
@@ -224,6 +242,48 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
 
     fetchRecommendations()
   }, [conversationId, chunks, aiEnabled, isRecording, lastProcessedChunkId])
+
+  // Poll for metadata updates after recording ends
+  useEffect(() => {
+    if (!conversationId || isRecording || !aiEnabled) return
+
+    // Only poll if we don't have metadata yet
+    if (conversationTitle && conversationDescription) return
+
+    setMetadataGenerating(true)
+    let pollCount = 0
+    const maxPolls = 10 // Poll for up to 30 seconds (10 * 3s)
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const conversation = await conversationApi.get(conversationId)
+
+        // Update title and description if they've been generated
+        if (conversation.title && !conversation.title.startsWith('Conversation 20')) {
+          setConversationTitle(conversation.title)
+        }
+        if (conversation.description) {
+          setConversationDescription(conversation.description)
+        }
+
+        // Stop polling if we have both or reached max polls
+        pollCount++
+        if ((conversation.title && conversation.description) || pollCount >= maxPolls) {
+          setMetadataGenerating(false)
+          clearInterval(pollInterval)
+        }
+      } catch (err) {
+        console.error('Error polling for metadata:', err)
+        setMetadataGenerating(false)
+        clearInterval(pollInterval)
+      }
+    }, 3000)
+
+    return () => {
+      clearInterval(pollInterval)
+      setMetadataGenerating(false)
+    }
+  }, [conversationId, isRecording, conversationTitle, conversationDescription, aiEnabled])
 
   const uploadChunk = useCallback(async (blob, index) => {
     if (!conversationIdRef.current) return
@@ -574,6 +634,15 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
     setUploadQueue([])
     setUploadingCount(0)
     setError(null)
+    // Reset AI state
+    setAiSuggestions([])
+    setAllSuggestions([])
+    setLastProcessedChunkId(null)
+    setAiError(null)
+    // Reset metadata state
+    setConversationTitle(null)
+    setConversationDescription(null)
+    setMetadataGenerating(false)
   }
 
   const formatTime = (seconds) => {
@@ -756,6 +825,47 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
           </div>
         )}
 
+        {/* Auto-generated Metadata Display */}
+        {!isRecording && conversationId && (conversationTitle || conversationDescription || metadataGenerating) && (
+          <div className="mb-4 p-4 bg-slate-900/50 rounded-xl border border-slate-700/50 animate-slide-up">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-primary text-xl mt-0.5">
+                {metadataGenerating ? 'pending' : 'auto_awesome'}
+              </span>
+              <div className="flex-1">
+                {metadataGenerating ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                      <span className="text-sm text-slate-400">AI is generating title and description...</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-700/50 rounded animate-pulse w-3/4"></div>
+                      <div className="h-3 bg-slate-700/50 rounded animate-pulse w-full"></div>
+                      <div className="h-3 bg-slate-700/50 rounded animate-pulse w-5/6"></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {conversationTitle && (
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Auto-generated Title</div>
+                        <h3 className="text-base font-semibold text-white">{conversationTitle}</h3>
+                      </div>
+                    )}
+                    {conversationDescription && (
+                      <div>
+                        <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Description</div>
+                        <p className="text-sm text-slate-300 leading-relaxed">{conversationDescription}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Live Transcript Display */}
         {(isRecording || chunks.length > 0) && (
           <div className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden mb-4">
@@ -828,6 +938,46 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                 <span className="text-xs">Chunk {item.index + 1} (Queued)...</span>
               </div>
             ))}
+
+            {/* All AI Suggestions History */}
+            {allSuggestions.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-700/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-violet-400 text-sm">psychology</span>
+                  <span className="text-[11px] font-bold text-violet-400 uppercase tracking-wider">
+                    AI Suggestions ({allSuggestions.length})
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {allSuggestions.map((item, groupIdx) => (
+                    <div key={groupIdx} className="bg-violet-900/20 rounded-lg p-2 border border-violet-500/20">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-medium text-violet-400">
+                          Chunk {item.chunkIndex + 1}
+                        </span>
+                        {item.model && (
+                          <span className="text-[9px] text-violet-400/60 font-mono">
+                            {item.provider}/{item.model}
+                          </span>
+                        )}
+                      </div>
+                      {item.suggestions.map((suggestion, idx) => (
+                        <div key={idx} className="flex items-start gap-1.5 mt-1">
+                          <span className="material-symbols-outlined text-violet-400 text-xs mt-0.5">
+                            {suggestion.type === 'clarification' ? 'help' :
+                              suggestion.type === 'follow_up' ? 'chat' : 'sticky_note_2'}
+                          </span>
+                          <div className="flex-1">
+                            <span className="text-[11px] font-medium text-violet-300">{suggestion.title}: </span>
+                            <span className="text-[11px] text-slate-400">{suggestion.message}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )
         }
@@ -1202,6 +1352,46 @@ function ConversationRecorder({ onRecordingComplete, onRecordingStateChange, com
                     .map(c => c.transcript_text)
                     .join(' ')}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* All AI Suggestions History */}
+          {allSuggestions.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                AI Suggestions ({allSuggestions.length} chunks)
+              </h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {allSuggestions.map((item, groupIdx) => (
+                  <div key={groupIdx} className="bg-violet-50 rounded-lg p-2 border border-violet-200">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-medium text-violet-600">
+                        Chunk {item.chunkIndex + 1}
+                      </span>
+                      {item.model && (
+                        <span className="text-[9px] text-violet-400 font-mono">
+                          {item.provider}/{item.model}
+                        </span>
+                      )}
+                    </div>
+                    {item.suggestions.map((suggestion, idx) => (
+                      <div key={idx} className="flex items-start gap-1.5 mt-1">
+                        <span className="text-violet-500 text-xs">
+                          {suggestion.type === 'clarification' ? '❓' :
+                            suggestion.type === 'follow_up' ? '💬' : '📝'}
+                        </span>
+                        <div className="flex-1">
+                          <span className="text-xs font-medium text-violet-700">{suggestion.title}: </span>
+                          <span className="text-xs text-gray-600">{suggestion.message}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -69,6 +69,7 @@ class TranscriptionResponse(BaseModel):
     error_message: Optional[str] = None
     is_hallucination: bool = False
     ai_suggestions: Optional[List[AISuggestion]] = None
+    ai_model: Optional[str] = None
     
     @field_validator('ai_suggestions', mode='before')
     @classmethod
@@ -168,6 +169,7 @@ class ConversationChunkResponse(BaseModel):
     error_message: Optional[str] = None
     is_hallucination: bool = False
     ai_suggestions: Optional[List[AISuggestion]] = None
+    ai_model: Optional[str] = None
     
     @field_validator('ai_suggestions', mode='before')
     @classmethod

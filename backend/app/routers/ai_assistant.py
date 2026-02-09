@@ -112,6 +112,10 @@ async def get_recommendations(
     if suggestions and not result.get("error"):
         import json
         latest_chunk.ai_suggestions = json.dumps([s.model_dump() for s in suggestions])
+        # Save model info in format "provider/model"
+        provider = result.get("provider", "unknown")
+        model = result.get("model", "unknown")
+        latest_chunk.ai_model = f"{provider}/{model}"
         db.commit()
     
     return RecommendationResponse(

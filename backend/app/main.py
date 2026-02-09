@@ -15,7 +15,8 @@ async def lifespan(app: FastAPI):
     print(f"Using Whisper model: {settings.whisper_model}")
     print(f"Audio storage: {settings.audio_storage_path}")
     print(f"Transcript storage: {settings.transcript_storage_path}")
-    print(f"AI Assistant: {'enabled' if settings.ai_assistant_enabled else 'disabled'} ({settings.ai_assistant_model})")
+    ai_model = settings.ai_assistant_ollama_model if settings.ai_assistant_provider == "ollama" else settings.ai_assistant_model
+    print(f"AI Assistant: {'enabled' if settings.ai_assistant_enabled else 'disabled'} ({settings.ai_assistant_provider}/{ai_model})")
     yield
     # Cleanup code can go here
 

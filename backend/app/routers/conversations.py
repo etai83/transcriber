@@ -18,6 +18,7 @@ from ..schemas import (
 )
 from ..services.file_manager import file_manager
 from ..services.transcriber import transcriber_service
+from ..services.ai_assistant import ai_assistant_service
 from .transcriptions import process_transcription
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -110,6 +111,7 @@ async def add_chunk(
 @router.post("/{conversation_id}/complete", response_model=ConversationResponse)
 async def complete_conversation(
     conversation_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Mark a conversation as complete (recording finished)."""
@@ -141,7 +143,84 @@ async def complete_conversation(
     db.commit()
     db.refresh(conversation)
     
+    # Auto-generate title and description if AI is enabled and conversation has content
+    if ai_assistant_service.is_enabled() and conversation.chunks:
+        # Check if already has a custom title (not the default datetime-based one)
+        has_default_title = (
+            not conversation.title or 
+            conversation.title.startswith("Conversation 20") or
+            conversation.title.startswith("Chunk ")
+        )
+        
+        if has_default_title or not conversation.description:
+            # Schedule metadata generation as a background task
+            background_tasks.add_task(
+                _generate_conversation_metadata,
+                conversation_id,
+                db.bind.url.__str__()  # Pass database URL for new session
+            )
+    
     return conversation
+
+
+async def _generate_conversation_metadata(conversation_id: int, database_url: str):
+    """Background task to generate conversation title and description."""
+    from ..database import SessionLocal
+    
+    # Create a new database session for this background task
+    db = SessionLocal()
+    try:
+        conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if not conversation:
+            return
+        
+        # Get all completed chunks with transcripts
+        completed_chunks = [
+            chunk for chunk in conversation.chunks
+            if chunk.status == "completed" and chunk.transcript_text
+        ]
+        
+        if not completed_chunks:
+            return
+        
+        # Combine all transcripts
+        full_transcript = " ".join([
+            chunk.transcript_text 
+            for chunk in sorted(completed_chunks, key=lambda c: c.chunk_index or 0)
+        ])
+        
+        # Detect language from chunks (use most common detected language)
+        languages = [chunk.detected_language for chunk in completed_chunks if chunk.detected_language]
+        detected_language = max(set(languages), key=languages.count) if languages else conversation.language
+        
+        # Generate metadata using AI
+        result = await ai_assistant_service.generate_conversation_metadata(
+            full_transcript,
+            language=detected_language
+        )
+        
+        # Update conversation if we got valid results
+        if result.get("title") and not result.get("error"):
+            # Only update title if it's default/system generated
+            current_title = conversation.title
+            is_default_title = (
+                not current_title or 
+                current_title.startswith("Conversation 20") or
+                current_title.startswith("Chunk ")
+            )
+            
+            if is_default_title:
+                conversation.title = result["title"]
+        
+        if result.get("description") and not result.get("error"):
+            conversation.description = result["description"]
+        
+        db.commit()
+        
+    except Exception as e:
+        print(f"Error generating conversation metadata: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/{conversation_id}/refresh-status", response_model=ConversationResponse)

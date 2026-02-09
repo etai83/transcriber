@@ -552,8 +552,15 @@ function ViewConversation({ onMenuClick }) {
                 .sort((a, b) => (a.chunk_index ?? 0) - (b.chunk_index ?? 0))
                 .map(chunk => (
                   <div key={chunk.id} className="border-t border-violet-500/10 pt-3 first:border-0 first:pt-0">
-                    <div className="text-[10px] text-violet-400/60 uppercase tracking-wider mb-2">
-                      Chunk {(chunk.chunk_index ?? 0) + 1}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[10px] text-violet-400/60 uppercase tracking-wider">
+                        Chunk {(chunk.chunk_index ?? 0) + 1}
+                      </div>
+                      {chunk.ai_model && (
+                        <div className="text-[9px] text-violet-400/40 font-mono">
+                          {chunk.ai_model}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       {(Array.isArray(chunk.ai_suggestions) ? chunk.ai_suggestions : []).map((suggestion, idx) => (
